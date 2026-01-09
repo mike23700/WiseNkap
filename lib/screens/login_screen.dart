@@ -1,0 +1,121 @@
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _handleSignIn() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      
+      if (response.session != null && mounted) {
+        // La navigation sera gérée par AuthGate via le StreamBuilder
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Connexion réussie !'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        String errorMessage = e.message;
+        if (e.message.contains('Invalid login credentials')) {
+          errorMessage = 'Email ou mot de passe incorrect';
+        } else if (e.message.contains('network error')) {
+          errorMessage = 'Erreur de connexion au serveur';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Une erreur inattendue est survenue'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(leading: const BackButton()),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Bon retour", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 40),
+            _buildInput("Email", _emailController, LucideIcons.mail),
+            _buildInput("Mots de passe", _passwordController, LucideIcons.lock, isPassword: true),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _handleSignIn,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2D6A4F),
+                minimumSize: const Size(double.infinity, 56),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: _isLoading 
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text("Se connecter", style: TextStyle(color: Colors.white, fontSize: 18)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInput(String label, TextEditingController controller, IconData icon, {bool isPassword = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: isPassword,
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, size: 20),
+            suffixIcon: isPassword ? const Icon(LucideIcons.eye, size: 20) : null,
+            filled: true,
+            fillColor: const Color(0xFFF6F6F6),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+}
