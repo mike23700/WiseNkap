@@ -24,8 +24,14 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       
       if (response.session != null && mounted) {
-        // La navigation sera gérée par AuthGate via le StreamBuilder
+        // Redirection vers la page d'accueil après connexion réussie
         if (mounted) {
+          // Fermer tous les écrans et ouvrir la page d'accueil
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/home', 
+            (route) => false,
+          );
+          
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Connexion réussie !'),

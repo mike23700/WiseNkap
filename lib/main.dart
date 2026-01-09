@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/supabase_config.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +23,12 @@ class SpendwiseApp extends StatelessWidget {
         primaryColor: const Color(0xFF2D6A4F),
         useMaterial3: true,
       ),
-      home: const AuthGate(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const AuthGate(),
+        '/home': (context) => const HomeScreen(),
+        '/login': (context) => const LoginScreen(),
+      },
     );
   }
 }
@@ -62,6 +68,9 @@ class _AuthGateState extends State<AuthGate> {
         
         // Si l'utilisateur est connecté, afficher l'écran d'accueil
         if (session != null) {
+          Future.microtask(() {
+            Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+          });
           return const HomeScreen();
         }
         
