@@ -166,8 +166,14 @@ class _HomeScreenState extends State<HomeScreen> {
               IconButton(icon: const Icon(LucideIcons.calendar, color: Color(0xFF2D6A4F)), onPressed: () {}),
               IconButton(icon: const Icon(LucideIcons.barChart2, color: Colors.grey), onPressed: () {}),
               const SizedBox(width: 40), // Espace central
-              IconButton(icon: const Icon(LucideIcons.dollarSign, color: Colors.grey), onPressed: () {}),
-              IconButton(icon: const Icon(LucideIcons.user, color: Colors.grey), onPressed: () {}),
+              IconButton(
+                icon: const Icon(LucideIcons.dollarSign, color: Colors.grey), 
+                onPressed: () {}
+              ),
+              IconButton(
+                icon: const Icon(LucideIcons.user, color: Colors.grey), 
+                onPressed: () => Navigator.pushNamed(context, '/profile'),
+              ),
             ],
           ),
         ),

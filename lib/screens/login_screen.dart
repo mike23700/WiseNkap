@@ -31,12 +31,14 @@ class _LoginScreenState extends State<LoginScreen> {
             (route) => false,
           );
           
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Connexion réussie !'),
-              backgroundColor: Colors.green,
-            ),
+          final snackBar = SnackBar(
+            content: const Text('Connexion réussie !'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(bottom: 70.0), // Pour éviter le chevauchement avec le FAB
+            duration: const Duration(seconds: 2),
           );
+          ScaffoldMessenger.of(context).showSnackBar(snackBar);
         }
       }
     } on AuthException catch (e) {
@@ -48,23 +50,25 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMessage = 'Erreur de connexion au serveur';
         }
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
+        final snackBar = SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(bottom: 70.0), // Pour éviter le chevauchement avec le FAB
+          duration: const Duration(seconds: 3),
         );
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Une erreur inattendue est survenue'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
+        final snackBar = SnackBar(
+          content: const Text('Une erreur inattendue est survenue'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(bottom: 70.0), // Pour éviter le chevauchement avec le FAB
+          duration: const Duration(seconds: 3),
         );
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
