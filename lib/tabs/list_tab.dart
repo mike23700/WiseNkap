@@ -108,8 +108,8 @@ class _TransactionDetailTile extends StatelessWidget {
           ),
           Expanded(
             flex: 3, 
-            child: Text("FCFA ${tx['montant']}", 
-              style: TextStyle(color: isRev ? Colors.indigo : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14), 
+              child: Text("FCFA ${ (tx['montant'] as num).toInt() }",
+              style: TextStyle(color: isRev ? Colors.indigo : Colors.redAccent, fontSize: 14), 
               textAlign: TextAlign.right
             )
           ),

@@ -5,6 +5,7 @@ import '../providers/user_provider.dart';
 import '../widgets/home_header_stats.dart';
 import '../widgets/add_transaction_sheet.dart';
 import '../tabs/list_tab.dart';
+import '../tabs/calendar_tab.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _tabs = [
     const ListTab(),
-    const Center(child: Text("Calendrier")),
+    const CalendarTab(),
     const Center(child: Text("Mois")),
     const Center(child: Text("Résumé")),
   ];
@@ -55,6 +56,17 @@ class _HomeScreenState extends State<HomeScreen> {
     centerTitle: true,
     leading: const Icon(LucideIcons.search, color: Colors.grey),
     actions: [
+    IconButton(
+      onPressed: () {
+        // TODO : action tips / conseils / astuces
+      },
+      icon: const Icon(
+        LucideIcons.lightbulb,
+        color: Colors.amber, 
+        size: 22,
+      ),
+      tooltip: "Conseils",
+    ),      
       IconButton(
         onPressed: () => Navigator.pushNamed(context, '/profile'),
         icon: const CircleAvatar(

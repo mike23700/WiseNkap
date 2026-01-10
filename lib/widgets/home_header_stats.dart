@@ -29,10 +29,10 @@ class HomeHeaderStats extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 10),
     child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Icon(Icons.chevron_left, color: Colors.grey),
-      const SizedBox(width: 10),
+      const SizedBox(width: 30),
       Text(DateFormat('MMM yyyy', 'fr_FR').format(DateTime.now()), 
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-      const SizedBox(width: 10),
+      const SizedBox(width: 30),
       const Icon(Icons.chevron_right, color: Colors.grey),
     ]),
   );
@@ -82,6 +82,6 @@ class _SummaryItem extends StatelessWidget {
   const _SummaryItem({required this.label, required this.value, required this.color});
   @override Widget build(BuildContext context) => Column(children: [
     Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
-    Text("${value.toInt()} F", style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+    Text("FCFA ${value.toInt()}", style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
   ]);
 }
