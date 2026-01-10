@@ -13,34 +13,68 @@ class AddTransactionSheet extends StatefulWidget {
 
 class _AddTransactionSheetState extends State<AddTransactionSheet> {
   final _supabase = Supabase.instance.client;
-  bool isIncome = true; // Pour basculer entre Income et Expense
-  String? selectedCategory;
+  bool isIncome = true;
+  
+  // Changement ici : on stocke des Maps pour avoir l'ID et le NOM
+  List<Map<String, dynamic>> _categoriesFromDb = [];
+  String? _selectedCategoryId; 
+  
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
   DateTime selectedDate = DateTime.now();
+  bool _isSaving = false;
 
-  // Liste de catégories exemple (à lier à ta table categories plus tard)
-  final List<String> categories = ['Salaire', 'Alimentation', 'Transport', 'Loisirs', 'Santé'];
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories(); // Charger les vraies catégories au démarrage
+  }
+
+  // RÉCUPÉRER LES CATÉGORIES DE LA BD
+  Future<void> _loadCategories() async {
+    try {
+      final type = isIncome ? 'revenu' : 'depense';
+      final data = await _supabase
+          .from('categories')
+          .select('id, nom')
+          .eq('type', type);
+
+      setState(() {
+        _categoriesFromDb = List<Map<String, dynamic>>.from(data);
+        _selectedCategoryId = null; // Reset quand on change de type
+      });
+    } catch (e) {
+      debugPrint("Erreur chargement categories: $e");
+    }
+  }
 
   Future<void> _saveTransaction() async {
-    if (_amountController.text.isEmpty || selectedCategory == null) return;
+    if (_amountController.text.isEmpty || _selectedCategoryId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Remplissez le montant et la catégorie")),
+      );
+      return;
+    }
 
+    setState(() => _isSaving = true);
     final userId = _supabase.auth.currentUser?.id;
     final table = isIncome ? 'revenus' : 'depenses';
 
     try {
       await _supabase.from(table).insert({
         'user_id': userId,
-        'montant': double.parse(_amountController.text),
+        'montant': double.parse(_amountController.text.replaceAll(',', '.')),
         'description': _noteController.text,
-        'date': selectedDate.toIso8601String(),
-        // 'categorie_id': ... (nécessite l'ID de la table categories)
+        'date': DateFormat('yyyy-MM-dd').format(selectedDate),
+        'categorie_id': _selectedCategoryId, // ON ENVOIE L'ID MAINTENANT
       });
 
       widget.onTransactionAdded();
       Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erreur : $e")));
+    } finally {
+      setState(() => _isSaving = false);
     }
   }
 
@@ -48,7 +82,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom, // Pour éviter le clavier
+        bottom: MediaQuery.of(context).viewInsets.bottom,
         top: 20, left: 20, right: 20,
       ),
       decoration: const BoxDecoration(
@@ -65,22 +99,28 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             const Center(child: Text("Transaction", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D6A4F)))),
             const SizedBox(height: 20),
 
-            // Sélecteur Income / Expense (Design Maquette)
+            // Sélecteur Income / Expense
             Container(
               decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
               child: Row(
                 children: [
-                  Expanded(child: _buildToggleButton("Income", isIncome, const Color(0xFF2D6A4F), () => setState(() => isIncome = true))),
-                  Expanded(child: _buildToggleButton("Expense", !isIncome, Colors.red, () => setState(() => isIncome = false))),
+                  Expanded(child: _buildToggleButton("Income", isIncome, const Color(0xFF2D6A4F), () {
+                    setState(() => isIncome = true);
+                    _loadCategories(); // Recharger les catégories revenus
+                  })),
+                  Expanded(child: _buildToggleButton("Expense", !isIncome, Colors.red, () {
+                    setState(() => isIncome = false);
+                    _loadCategories(); // Recharger les catégories dépenses
+                  })),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
-            _buildLabel("Amount"),
+            _buildLabel("Montant"),
             TextField(
               controller: _amountController,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 prefixText: "FCFA ",
                 filled: true,
@@ -90,13 +130,18 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             ),
 
             const SizedBox(height: 15),
-            _buildLabel("Category"),
+            _buildLabel("Catégorie"),
             DropdownButtonFormField<String>(
-              value: selectedCategory,
+              value: _selectedCategoryId,
               decoration: InputDecoration(filled: true, fillColor: Colors.grey[50]!, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-              items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-              onChanged: (val) => setState(() => selectedCategory = val),
-              hint: const Text("Select a category"),
+              items: _categoriesFromDb.map((cat) {
+                return DropdownMenuItem<String>(
+                  value: cat['id'].toString(), // On utilise l'ID de la BD
+                  child: Text(cat['nom']),      // On affiche le NOM
+                );
+              }).toList(),
+              onChanged: (val) => setState(() => _selectedCategoryId = val),
+              hint: const Text("Choisir une catégorie"),
             ),
 
             const SizedBox(height: 15),
@@ -109,26 +154,28 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
               child: Container(
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(color: Colors.grey[50]!, borderRadius: BorderRadius.circular(12)),
-                child: Row(children: [const Icon(LucideIcons.calendar, size: 20), const SizedBox(width: 10), Text(DateFormat('MMMM d, yyyy').format(selectedDate))]),
+                child: Row(children: [const Icon(LucideIcons.calendar, size: 20), const SizedBox(width: 10), Text(DateFormat('dd MMMM yyyy', 'fr_FR').format(selectedDate))]),
               ),
             ),
 
             const SizedBox(height: 15),
-            _buildLabel("Note (optional)"),
+            _buildLabel("Note (optionnel)"),
             TextField(
               controller: _noteController,
-              decoration: InputDecoration(hintText: "Add a note...", filled: true, fillColor: Colors.grey[50]!, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+              decoration: InputDecoration(hintText: "Ajouter une note...", filled: true, fillColor: Colors.grey[50]!, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
             ),
 
             const SizedBox(height: 30),
             ElevatedButton(
-              onPressed: _saveTransaction,
+              onPressed: _isSaving ? null : _saveTransaction,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2D6A4F),
                 minimumSize: const Size(double.infinity, 55),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
               ),
-              child: const Text("Ajouter", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              child: _isSaving 
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text("Ajouter", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 20),
           ],

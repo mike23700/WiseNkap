@@ -17,7 +17,6 @@ class _HomeScreenState extends State<HomeScreen> {
   double totalRevenus = 0.0;
   double totalDepenses = 0.0;
   
-  // Structure : {'2026-01-08': [transaction1, transaction2], ...}
   Map<String, List<Map<String, dynamic>>> groupedTransactions = {};
 
   @override
@@ -31,18 +30,24 @@ class _HomeScreenState extends State<HomeScreen> {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) return;
 
-      final revs = await _supabase.from('revenus').select().eq('user_id', userId);
-      final deps = await _supabase.from('depenses').select().eq('user_id', userId);
+      // Jointure avec la table categories pour récupérer le champ 'nom'
+      final revs = await _supabase
+          .from('revenus')
+          .select('*, categories(nom)')
+          .eq('user_id', userId);
+          
+      final deps = await _supabase
+          .from('depenses')
+          .select('*, categories(nom)')
+          .eq('user_id', userId);
 
       final all = [
         ...(revs as List).map((e) => {...e, 'type': 'revenu'}),
         ...(deps as List).map((e) => {...e, 'type': 'depense'}),
       ];
 
-      // Tri global par date décroissante
       all.sort((a, b) => DateTime.parse(b['date']).compareTo(DateTime.parse(a['date'])));
 
-      // Regroupement par jour
       Map<String, List<Map<String, dynamic>>> groups = {};
       double resRev = 0;
       double resDep = 0;
@@ -65,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
+      debugPrint("Erreur de données: $e");
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -100,11 +106,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- Éléments d'interface extraits pour la clarté ---
-
   PreferredSizeWidget _buildAppBar() => AppBar(
     backgroundColor: Colors.white, elevation: 0,
-    title: const Text("Dépenses", style: TextStyle(color: Colors.black)),
+    title: const Text("Dépenses", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
     centerTitle: true,
     leading: const Icon(LucideIcons.search, color: Colors.grey),
     actions: const [Padding(padding: EdgeInsets.only(right: 15), child: CircleAvatar(radius: 15, backgroundColor: Color(0xFFE0E0E0), child: Icon(LucideIcons.user, size: 18, color: Colors.grey)))],
@@ -114,7 +118,9 @@ class _HomeScreenState extends State<HomeScreen> {
     padding: const EdgeInsets.symmetric(vertical: 10),
     child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Icon(Icons.chevron_left, color: Colors.grey),
-      Text(DateFormat('MMM. yyyy', 'fr_FR').format(DateTime.now()), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+      const SizedBox(width: 10),
+      Text(DateFormat('MMM yyyy', 'fr_FR').format(DateTime.now()), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+      const SizedBox(width: 10),
       const Icon(Icons.chevron_right, color: Colors.grey),
     ]),
   );
@@ -160,12 +166,9 @@ class _HomeScreenState extends State<HomeScreen> {
   );
 }
 
-// --- Widget de groupe par jour (L'élément clé de ta capture) ---
-
 class _DayGroupWidget extends StatelessWidget {
   final String date;
   final List<Map<String, dynamic>> items;
-
   const _DayGroupWidget({required this.date, required this.items});
 
   @override
@@ -173,7 +176,6 @@ class _DayGroupWidget extends StatelessWidget {
     DateTime dt = DateTime.parse(date);
     double dayRev = 0;
     double dayDep = 0;
-
     for (var item in items) {
       double mnt = (item['montant'] as num).toDouble();
       if (item['type'] == 'revenu') dayRev += mnt; else dayDep += mnt;
@@ -181,38 +183,25 @@ class _DayGroupWidget extends StatelessWidget {
 
     return Column(
       children: [
-        // Header du jour (ex: 08 jeu.)
-// Dans _DayGroupWidget, remplace le header du jour par ceci :
-Container(
-  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-  color: Colors.grey[50],
-  child: Row(
-    children: [
-      Text(
-        DateFormat('dd', 'fr_FR').format(dt), 
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
-      ),
-      const SizedBox(width: 5),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.black87, 
-          borderRadius: BorderRadius.circular(4)
-        ), 
-        child: Text(
-          DateFormat('E', 'fr_FR').format(dt).toLowerCase(), 
-          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)
-        )
-      ),
-      const Spacer(),
-      // Affichage des totaux journaliers
-      if (dayRev > 0) Text("FCFA ${dayRev.toInt()}", style: const TextStyle(color: Colors.indigo, fontSize: 12)),
-      const SizedBox(width: 15),
-      if (dayDep > 0) Text("FCFA ${dayDep.toInt()}", style: const TextStyle(color: Colors.orange, fontSize: 12)),
-    ],
-  ),
-),
-        // Liste des transactions du jour
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+          color: Colors.grey[50],
+          child: Row(
+            children: [
+              Text(DateFormat('dd', 'fr_FR').format(dt), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 5),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(4)), 
+                child: Text(DateFormat('E', 'fr_FR').format(dt).toLowerCase(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold))
+              ),
+              const Spacer(),
+              if (dayRev > 0) Text("FCFA ${dayRev.toInt()}", style: const TextStyle(color: Colors.indigo, fontSize: 12)),
+              const SizedBox(width: 15),
+              if (dayDep > 0) Text("FCFA ${dayDep.toInt()}", style: const TextStyle(color: Colors.orange, fontSize: 12)),
+            ],
+          ),
+        ),
         ...items.map((tx) => _TransactionDetailTile(tx: tx)).toList(),
       ],
     );
@@ -226,24 +215,44 @@ class _TransactionDetailTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     bool isRev = tx['type'] == 'revenu';
+    String category = tx['categories']?['nom'] ?? 'Autre';
+    String? note = tx['description'];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
       child: Row(
         children: [
-          Expanded(flex: 2, child: Text(tx['description'] ?? 'Autre', style: const TextStyle(fontSize: 15))),
-          Expanded(flex: 2, child: const Text("Portefeuille", style: TextStyle(color: Colors.grey, fontSize: 13), textAlign: TextAlign.center)),
-          Expanded(flex: 2, child: Text(
-            "FCFA ${tx['montant']}", 
-            style: TextStyle(color: isRev ? Colors.indigo : Colors.redAccent, fontWeight: FontWeight.w500), 
-            textAlign: TextAlign.right
-          )),
+          Expanded(
+            flex: 3, 
+            child: Text(category, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w400))
+          ),
+          
+          Expanded(
+            flex: 3,
+            child: Column(
+              children: [
+                if (note != null && note.isNotEmpty)
+                  Text(note, style: const TextStyle(fontSize: 14, color: Colors.black87), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis),
+                const Text("Portefeuille", style: TextStyle(color: Colors.grey, fontSize: 12), textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+          
+          // DROITE : Montant
+          Expanded(
+            flex: 3, 
+            child: Text(
+              "FCFA ${tx['montant']}", 
+              style: TextStyle(color: isRev ? Colors.indigo : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14), 
+              textAlign: TextAlign.right
+            )
+          ),
         ],
       ),
     );
   }
 }
 
-// Widgets réutilisables simples (Tabs / Summary)
 class _TabItem extends StatelessWidget {
   final String title; final bool isActive;
   const _TabItem({required this.title, this.isActive = false});
