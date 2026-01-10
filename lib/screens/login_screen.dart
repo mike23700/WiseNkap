@@ -26,7 +26,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.session != null && mounted) {
         // Redirection vers la page d'accueil après connexion réussie
         if (mounted) {
-          // Fermer tous les écrans et ouvrir la page d'accueil
           Navigator.of(context).pushNamedAndRemoveUntil(
             '/home', 
             (route) => false,

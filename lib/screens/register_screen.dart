@@ -50,13 +50,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Afficher un message de succès
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Succès ! Vérifiez votre email pour confirmer votre inscription."),
+            content: Text("Inscription effectuer avec sucess"),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 5),
           ),
         );
         
-        // Revenir à l'écran précédent après un court délai
         await Future.delayed(const Duration(seconds: 2));
         if (mounted) {
           Navigator.pop(context);

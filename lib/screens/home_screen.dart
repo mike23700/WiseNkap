@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,182 +12,233 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _supabase = Supabase.instance.client;
-  Map<String, dynamic>? _userData;
   bool _isLoading = true;
+
+  double totalRevenus = 0.0;
+  double totalDepenses = 0.0;
+  List<Map<String, dynamic>> transactions = [];
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _fetchDashboardData();
   }
 
-  Future<void> _loadUserData() async {
-    final user = _supabase.auth.currentUser;
-
-    if (user == null) {
-      setState(() => _isLoading = false);
-      return;
-    }
-
+  Future<void> _fetchDashboardData() async {
     try {
-      final response = await _supabase
-          .from('profiles')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final revenusData = await _supabase.from('revenus').select().eq('user_id', userId);
+      final depensesData = await _supabase.from('depenses').select().eq('user_id', userId);
+
+      final revenus = (revenusData as List).map((e) => {...e, 'type': 'revenu'}).toList();
+      final depenses = (depensesData as List).map((e) => {...e, 'type': 'depense'}).toList();
+
+      final allTransactions = [...revenus, ...depenses];
+
+      // Tri par date de création
+      allTransactions.sort((a, b) => 
+        DateTime.parse(b['created_at']).compareTo(DateTime.parse(a['created_at']))
+      );
 
       if (mounted) {
         setState(() {
-          _userData = response;
+          totalRevenus = revenus.fold(0.0, (sum, item) => sum + (item['montant'] as num));
+          totalDepenses = depenses.fold(0.0, (sum, item) => sum + (item['montant'] as num));
+          transactions = List<Map<String, dynamic>>.from(allTransactions);
           _isLoading = false;
         });
       }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _signOut() async {
-    await _supabase.auth.signOut();
-    if (mounted) {
-      Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
+    } catch (e) {
+      debugPrint("Erreur dashboard: $e");
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = _supabase.auth.currentUser;
-
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Tableau de bord'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text("Dépenses", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        leading: IconButton(icon: const Icon(LucideIcons.search, color: Colors.grey), onPressed: () {}),
         actions: [
           IconButton(
-            icon: const Icon(LucideIcons.logOut),
-            onPressed: _signOut,
-          ),
+            icon: const CircleAvatar(
+              radius: 15,
+              backgroundColor: Color(0xFFF0F0F0),
+              child: Icon(LucideIcons.user, size: 18, color: Colors.grey),
+            ),
+            onPressed: () {},
+          )
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          const CircleAvatar(
-                            radius: 28,
-                            child: Icon(LucideIcons.user),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${_userData?['prenom'] ?? 'Utilisateur'} ${_userData?['nom'] ?? ''}',
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  user?.email ?? '',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  Text(
-                    'Aperçu rapide',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  Row(
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF2D6A4F)))
+          : Column(
+              children: [
+                // Sélecteur de date
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: _statCard(
-                          context,
-                          'Dépenses du mois',
-                          '0.00 €',
-                          LucideIcons.arrowUpRight,
-                          Colors.red,
-                        ),
+                      const Icon(Icons.chevron_left, color: Colors.grey),
+                      const SizedBox(width: 10),
+                      Text(
+                        DateFormat('MMM yyyy', 'fr_FR').format(DateTime.now()),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _statCard(
-                          context,
-                          'Économies',
-                          '0.00 €',
-                          LucideIcons.piggyBank,
-                          Colors.green,
-                        ),
-                      ),
+                      const SizedBox(width: 10),
+                      const Icon(Icons.chevron_right, color: Colors.grey),
                     ],
                   ),
-                ],
-              ),
+                ),
+
+                // Onglets de navigation haute
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _TabItem(title: "Liste", isActive: true),
+                      _TabItem(title: "Calendrier"),
+                      _TabItem(title: "Mois"),
+                      _TabItem(title: "Résumé"),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, thickness: 0.5),
+
+                // Résumé financier (Ruban de totaux)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  color: Colors.white,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _SummaryItem(label: "Revenus", value: totalRevenus, color: Colors.indigo),
+                      _SummaryItem(label: "Dépenses", value: totalDepenses, color: Colors.orange),
+                      _SummaryItem(label: "Total", value: totalRevenus - totalDepenses, color: const Color(0xFF2D6A4F)),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, thickness: 0.5),
+
+                // Liste des transactions dynamique
+                Expanded(
+                  child: transactions.isEmpty
+                      ? const Center(child: Text("Aucune transaction enregistrée"))
+                      : ListView.builder(
+                          itemCount: transactions.length,
+                          itemBuilder: (context, index) {
+                            final item = transactions[index];
+                            return _TransactionTile(
+                              description: item['description'] ?? 'Transaction',
+                              wallet: "Portefeuille",
+                              amount: (item['montant'] as num).toDouble(),
+                              isRevenu: item['type'] == 'revenu',
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        child: const Icon(LucideIcons.plus),
+        backgroundColor: const Color(0xFF2D6A4F),
+        elevation: 4,
+        onPressed: () {}, // À lier au futur formulaire d'ajout
+        child: const Icon(Icons.add, color: Colors.white, size: 30),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8,
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(icon: const Icon(LucideIcons.calendar, color: Color(0xFF2D6A4F)), onPressed: () {}),
+              IconButton(icon: const Icon(LucideIcons.barChart2, color: Colors.grey), onPressed: () {}),
+              const SizedBox(width: 40), // Espace central
+              IconButton(icon: const Icon(LucideIcons.dollarSign, color: Colors.grey), onPressed: () {}),
+              IconButton(icon: const Icon(LucideIcons.settings, color: Colors.grey), onPressed: () {}),
+            ],
+          ),
+        ),
       ),
     );
   }
+}
 
-  Widget _statCard(
-    BuildContext context,
-    String title,
-    String amount,
-    IconData icon,
-    Color color,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.bodySmall,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Icon(icon, color: color, size: 20),
-              ],
+// --- SOUS-WIDGETS ---
+
+class _TabItem extends StatelessWidget {
+  final String title;
+  final bool isActive;
+  const _TabItem({required this.title, this.isActive = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(title, style: TextStyle(color: isActive ? const Color(0xFF2D6A4F) : Colors.grey, fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
+        if (isActive) Container(margin: const EdgeInsets.only(top: 5), height: 3, width: 30, color: const Color(0xFF2D6A4F)),
+      ],
+    );
+  }
+}
+
+class _SummaryItem extends StatelessWidget {
+  final String label;
+  final double value;
+  final Color color;
+  const _SummaryItem({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 4),
+        Text(value.toStringAsFixed(0), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
+      ],
+    );
+  }
+}
+
+class _TransactionTile extends StatelessWidget {
+  final String description;
+  final String wallet;
+  final double amount;
+  final bool isRevenu;
+
+  const _TransactionTile({required this.description, required this.wallet, required this.amount, required this.isRevenu});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFF5F5F5)))),
+      child: Row(
+        children: [
+          Expanded(flex: 3, child: Text(description, style: const TextStyle(fontSize: 15), overflow: TextOverflow.ellipsis)),
+          Expanded(flex: 2, child: Text(wallet, style: const TextStyle(color: Colors.grey, fontSize: 13), textAlign: TextAlign.center)),
+          Expanded(
+            flex: 3,
+            child: Text(
+              "${isRevenu ? '' : '- '}FCFA ${amount.toStringAsFixed(0)}",
+              style: TextStyle(color: isRevenu ? Colors.indigo : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
+              textAlign: TextAlign.right,
             ),
-            const SizedBox(height: 12),
-            Text(
-              amount,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(color: color, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

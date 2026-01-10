@@ -15,10 +15,8 @@ class WelcomeScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Section Haute : Logo et Slogan
               Column(
                 children: [
-                  // Remplace par ton asset ou une icône temporaire
                   const Icon(
                     Icons.trending_up_rounded,
                     size: 80,
@@ -45,14 +43,11 @@ class WelcomeScreen extends StatelessWidget {
                 ],
               ),
 
-              // Section Milieu : Illustration
-              // Assure-toi d'avoir ajouté l'image dans ton pubspec.yaml
               Center(
                 child: Image.asset(
                   'assets/Wallet.png', 
                   height: 280,
                   errorBuilder: (context, error, stackTrace) {
-                    // Fallback si l'image n'est pas encore ajoutée
                     return Container(
                       height: 200,
                       width: 200,
@@ -66,7 +61,6 @@ class WelcomeScreen extends StatelessWidget {
               // Section Basse : Boutons d'action
               Column(
                 children: [
-                  // Bouton S'inscrire (Plein)
                   ElevatedButton(
                     onPressed: () {
                       Navigator.push(
@@ -93,7 +87,6 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   
-                  // Bouton Connexion (Bordure)
                   OutlinedButton(
                     onPressed: () {
                       Navigator.push(
