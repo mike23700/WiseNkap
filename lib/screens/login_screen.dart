@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
             content: const Text('Connexion réussie !'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.only(bottom: 70.0), // Pour éviter le chevauchement avec le FAB
+            margin: const EdgeInsets.only(bottom: 70.0), 
             duration: const Duration(seconds: 2),
           );
           ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -54,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
           content: Text(errorMessage),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.only(bottom: 70.0), // Pour éviter le chevauchement avec le FAB
+          margin: const EdgeInsets.only(bottom: 70.0), 
           duration: const Duration(seconds: 3),
         );
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
           content: const Text('Une erreur inattendue est survenue'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.only(bottom: 70.0), // Pour éviter le chevauchement avec le FAB
+          margin: const EdgeInsets.only(bottom: 70.0), 
           duration: const Duration(seconds: 3),
         );
         ScaffoldMessenger.of(context).showSnackBar(snackBar);

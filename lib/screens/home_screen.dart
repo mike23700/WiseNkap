@@ -190,60 +190,76 @@ class _HomeScreenState extends State<HomeScreen> {
   );
 }
 
-class _DayGroupWidget extends StatelessWidget {
+class _DayGroupWidget extends StatefulWidget {
   final String date;
   final List<Map<String, dynamic>> items;
   const _DayGroupWidget({required this.date, required this.items});
 
   @override
+  State<_DayGroupWidget> createState() => _DayGroupWidgetState();
+}
+
+class _DayGroupWidgetState extends State<_DayGroupWidget> {
+  // Par défaut, on laisse les transactions visibles (dépliées)
+  bool _isExpanded = true;
+
+  @override
   Widget build(BuildContext context) {
-    DateTime dt = DateTime.parse(date);
+    DateTime dt = DateTime.parse(widget.date);
     double dayRev = 0;
     double dayDep = 0;
-    for (var item in items) {
+    
+    for (var item in widget.items) {
       double mnt = (item['montant'] as num).toDouble();
       if (item['type'] == 'revenu') dayRev += mnt; else dayDep += mnt;
     }
 
     return Column(
       children: [
-Container(
-  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-  color: Colors.grey[50],
-  child: Row(
-    children: [
-      Text(
-        DateFormat('dd', 'fr_FR').format(dt), 
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
-      ),
-      const SizedBox(width: 5),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.black87, 
-          borderRadius: BorderRadius.circular(4)
-        ), 
-        child: Text(
-          DateFormat('E', 'fr_FR').format(dt).toLowerCase(), 
-          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)
-        )
-      ),
-      const Spacer(),
-      Text(
-        "FCFA ${dayRev.toInt()}", 
-        style: const TextStyle(color: Colors.indigo, fontSize: 12)
-      ),
-      
-      const SizedBox(width: 50),
-      
-      Text(
-        "FCFA ${dayDep.toInt()}", 
-        style: const TextStyle(color: Colors.orange, fontSize: 12)
-      ),
-    ],
-  ),
-),
-        ...items.map((tx) => _TransactionDetailTile(tx: tx)).toList(),
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _isExpanded = !_isExpanded;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+            color: Colors.grey[50],
+            child: Row(
+              children: [
+                Text(
+                  DateFormat('dd', 'fr_FR').format(dt), 
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
+                ),
+                const SizedBox(width: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black87, 
+                    borderRadius: BorderRadius.circular(4)
+                  ), 
+                  child: Text(
+                    DateFormat('E', 'fr_FR').format(dt).toLowerCase(), 
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)
+                  )
+                ),
+                const SizedBox(width: 10),
+                const Spacer(),
+                Text(
+                  "FCFA ${dayRev.toInt()}", 
+                  style: const TextStyle(color: Colors.indigo, fontSize: 12)
+                ),
+                const SizedBox(width: 40),
+                Text(
+                  "FCFA ${dayDep.toInt()}", 
+                  style: const TextStyle(color: Colors.orange, fontSize: 12)
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_isExpanded)
+          ...widget.items.map((tx) => _TransactionDetailTile(tx: tx)).toList(),
       ],
     );
   }
