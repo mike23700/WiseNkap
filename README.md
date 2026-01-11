@@ -1,4 +1,4 @@
-# spendwise
+# WiseNkap
 
 A new Flutter project.
 
