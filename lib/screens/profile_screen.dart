@@ -28,9 +28,9 @@ class ProfileScreen extends StatelessWidget {
             _buildHeader(context, store, user?.email ?? ""),
             const SizedBox(height: 60),
             _buildStatsSection(store),
-            const SizedBox(height: 25),
+            const SizedBox(height: 40),
             _buildMenuSection(),
-            const SizedBox(height: 25),
+            const SizedBox(height: 60),
             _buildLogoutButton(context),
             const SizedBox(height: 50),
           ],
@@ -45,7 +45,7 @@ class ProfileScreen extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         Container(
-          height: 280,
+          height: 310,
           width: double.infinity,
           decoration: const BoxDecoration(
             color: Color(0xFF2D6A4F),
@@ -95,7 +95,7 @@ class ProfileScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(store.displayName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 10),
                       Row(children: [
                         const Icon(LucideIcons.mail, size: 14, color: Color(0xFF2D6A4F)),
                         const SizedBox(width: 8),
