@@ -10,6 +10,8 @@ import '../screens/auth/register_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/profile_settings_screen.dart';
+import '../screens/budgets_screen.dart';
 
 GoRouter appRouter(BuildContext context) {
   final userProvider = context.watch<UserProvider>();
@@ -68,6 +70,11 @@ GoRouter appRouter(BuildContext context) {
       ),
       GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
       GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+      GoRoute(
+        path: '/profile-settings',
+        builder: (_, __) => const ProfileSettingsScreen(),
+      ),
+      GoRoute(path: '/budgets', builder: (_, __) => const BudgetsScreen()),
     ],
   );
 }

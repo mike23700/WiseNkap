@@ -9,6 +9,8 @@ import 'package:wiseNkap/widgets/add_transaction_sheet.dart';
 
 import 'package:wiseNkap/tabs/list_tab.dart';
 import 'package:wiseNkap/tabs/calendar_tab.dart';
+import 'package:wiseNkap/tabs/month_tab.dart';
+import 'package:wiseNkap/tabs/summary_tab.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -42,13 +44,13 @@ class _HomeScreenState extends State<HomeScreen> {
       _HomeTab(
         title: "Mois",
         icon: LucideIcons.dollarSign,
-        widget: Center(child: Text("Vue mensuelle")),
+        widget: MonthTab(),
         showFab: false,
       ),
       _HomeTab(
         title: "Résumé",
         icon: LucideIcons.barChart2,
-        widget: Center(child: Text("Statistiques & résumé")),
+        widget: SummaryTab(),
         showFab: false,
       ),
     ];

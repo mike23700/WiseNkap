@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
+import '../models/category.dart';
 
 class AddTransactionSheet extends StatefulWidget {
   final VoidCallback onTransactionAdded;
@@ -18,7 +19,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   final _noteController = TextEditingController();
   DateTime selectedDate = DateTime.now();
   bool _isSaving = false;
-  Map<String, dynamic>? _selectedCategory;
+  Category? _selectedCategory;
 
   @override
   void initState() {
@@ -94,7 +95,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             ),
             const SizedBox(height: 15),
 
-            DropdownButtonFormField<Map<String, dynamic>>(
+            DropdownButtonFormField<Category>(
               initialValue: _selectedCategory,
               decoration: InputDecoration(
                 labelText: "Catégorie",
@@ -109,7 +110,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                   categories.map((cat) {
                     return DropdownMenuItem(
                       value: cat,
-                      child: Text("${cat['emoji'] ?? '📁'}  ${cat['nom']}"),
+                      child: Text("${cat.emoji ?? '📁'}  ${cat.name}"),
                     );
                   }).toList(),
               onChanged: (val) => setState(() => _selectedCategory = val),
@@ -228,7 +229,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
       final success = await userProvider.addTransaction(
         montant: double.parse(_amountController.text),
         type: isIncome ? 'revenu' : 'depense',
-        categorieId: _selectedCategory!['id'],
+        categorieId: _selectedCategory!.id,
         date: selectedDate,
         description: _noteController.text.trim(),
       );

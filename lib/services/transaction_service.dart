@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/transaction.dart';
 
 class TransactionService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -55,11 +56,11 @@ class TransactionService {
   }
 
   /// Récupérer les transactions
-  Future<(List<Map<String, dynamic>> transactions, String? error)>
+  Future<(List<Transaction> transactions, String? error)>
   getTransactions() async {
     final user = _supabase.auth.currentUser;
     if (user == null) {
-      return (<Map<String, dynamic>>[], null);
+      return (<Transaction>[], null);
     }
 
     try {
@@ -69,10 +70,15 @@ class TransactionService {
           .eq('user_id', user.id)
           .order('date', ascending: false);
 
-      return (List<Map<String, dynamic>>.from(data), null);
+      final transactions =
+          (data as List)
+              .map((item) => Transaction.fromJson(item as Map<String, dynamic>))
+              .toList();
+
+      return (transactions, null);
     } catch (e) {
       debugPrint('Erreur lors du chargement des transactions: $e');
-      return (<Map<String, dynamic>>[], 'Erreur lors du chargement');
+      return (<Transaction>[], 'Erreur lors du chargement');
     }
   }
 
@@ -96,6 +102,57 @@ class TransactionService {
     } catch (e) {
       debugPrint('Erreur lors de la suppression: $e');
       return (false, 'Erreur lors de la suppression');
+    }
+  }
+
+  /// Mettre à jour une transaction
+  Future<(bool success, String? error)> updateTransaction({
+    required String transactionId,
+    required double montant,
+    required String type,
+    required String categorieId,
+    required DateTime date,
+    required String description,
+  }) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
+      return (false, 'Utilisateur non authentifié');
+    }
+
+    try {
+      // Validation des données
+      if (montant <= 0) {
+        return (false, 'Le montant doit être supérieur à 0');
+      }
+
+      if (type != 'revenu' && type != 'depense') {
+        return (false, 'Type invalide');
+      }
+
+      final transactionData = {
+        'montant': montant,
+        'type': type,
+        'categorie_id': categorieId,
+        'date': date.toIso8601String().split('T')[0],
+        'description': description.trim().isEmpty ? null : description.trim(),
+      };
+
+      debugPrint('📝 Mise à jour transaction: $transactionData');
+
+      await _supabase
+          .from('transactions')
+          .update(transactionData)
+          .eq('id', transactionId)
+          .eq('user_id', user.id);
+
+      debugPrint('✅ Transaction mise à jour avec succès');
+      return (true, null);
+    } on PostgrestException catch (e) {
+      debugPrint('❌ Erreur Postgrest: ${e.message}');
+      return (false, e.message);
+    } catch (e) {
+      debugPrint('❌ Erreur inattendue: $e');
+      return (false, 'Une erreur est survenue');
     }
   }
 }

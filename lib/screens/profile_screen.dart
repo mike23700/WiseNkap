@@ -60,7 +60,7 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 60),
             _buildStatsSection(store),
             const SizedBox(height: 25),
-            _buildMenuSection(),
+            _buildMenuSection(context),
             const SizedBox(height: 25),
             _buildLogoutButton(context),
             const SizedBox(height: 50),
@@ -117,7 +117,7 @@ class ProfileScreen extends StatelessWidget {
                             LucideIcons.settings,
                             color: Colors.white,
                           ),
-                          onPressed: () {},
+                          onPressed: () => context.push('/profile-settings'),
                         ),
                       ],
                     ),
@@ -240,7 +240,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuSection() {
+  Widget _buildMenuSection(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
@@ -250,17 +250,48 @@ class ProfileScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildMenuItem(LucideIcons.user, "Infos du Compte"),
+          _buildMenuItem(
+            context,
+            LucideIcons.user,
+            "Infos du Compte",
+            onTap: () => context.push('/profile-settings'),
+          ),
           const Divider(height: 1),
-          _buildMenuItem(LucideIcons.shieldCheck, "Securité & Confidentialité"),
+          _buildMenuItem(
+            context,
+            LucideIcons.trendingUp,
+            "Budgets",
+            onTap: () => context.push('/budgets'),
+          ),
           const Divider(height: 1),
-          _buildMenuItem(LucideIcons.helpCircle, "Aide"),
+          _buildMenuItem(
+            context,
+            LucideIcons.shieldCheck,
+            "Securité & Confidentialité",
+            onTap: () => context.push('/profile-settings'),
+          ),
+          const Divider(height: 1),
+          _buildMenuItem(
+            context,
+            LucideIcons.helpCircle,
+            "Aide",
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Aide - Bientôt disponible')),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildMenuItem(IconData icon, String title) {
+  Widget _buildMenuItem(
+    BuildContext context,
+    IconData icon,
+    String title, {
+    required VoidCallback onTap,
+  }) {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: const Color(0xFF2D6A4F).withOpacity(0.1),
@@ -271,6 +302,7 @@ class ProfileScreen extends StatelessWidget {
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
       trailing: const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
+      onTap: onTap,
     );
   }
 

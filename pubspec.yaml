@@ -2,7 +2,7 @@ name: wiseNkap
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+2002
 
 environment:
   sdk: ^3.7.2
@@ -25,6 +25,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   go_router: ^17.0.1
+  fl_chart: ^0.68.0
 
 dev_dependencies:
   flutter_test:
@@ -47,4 +48,4 @@ flutter:
     - assets/goals.png
     - assets/analysis.png
     - assets/budget.png
-    - .env
+    - assets/.env

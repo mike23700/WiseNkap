@@ -79,8 +79,8 @@ class _CalendarTabState extends State<CalendarTab> {
     double dayDep = 0;
 
     for (var tx in dayTransactions) {
-      double mnt = (tx['montant'] as num).toDouble();
-      if (tx['type'] == 'revenu') {
+      double mnt = tx.amount;
+      if (tx.type == 'revenu') {
         dayRev += mnt;
       } else {
         dayDep += mnt;

@@ -14,27 +14,40 @@ class OnboardingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset(image, height: 250),
-          const SizedBox(height: 40),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            description,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-        ],
+    final size = MediaQuery.of(context).size;
+    final isSmallScreen = size.height < 700;
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Column(
+          children: [
+            SizedBox(height: isSmallScreen ? 20 : 40),
+            Image.asset(
+              image,
+              height: isSmallScreen ? 160 : 220,
+              fit: BoxFit.contain,
+            ),
+            SizedBox(height: isSmallScreen ? 24 : 40),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: isSmallScreen ? 22 : null,
+              ),
+            ),
+            SizedBox(height: isSmallScreen ? 12 : 16),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontSize: isSmallScreen ? 14 : null,
+              ),
+            ),
+            SizedBox(height: isSmallScreen ? 20 : 40),
+          ],
+        ),
       ),
     );
   }
