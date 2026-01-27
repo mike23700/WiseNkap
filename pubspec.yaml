@@ -5,7 +5,7 @@ publish_to: 'none'
 version: 1.0.0+2002
 
 environment:
-  sdk: ^3.7.2
+  sdk: ">=3.9.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -32,6 +32,7 @@ dev_dependencies:
     sdk: flutter
   flutter_launcher_icons: ^0.13.1
   flutter_lints: ^5.0.0
+  change_app_package_name: ^1.1.0
 
 flutter_icons:
   android: true
@@ -48,4 +49,4 @@ flutter:
     - assets/goals.png
     - assets/analysis.png
     - assets/budget.png
-    - assets/.env
+    - .env

@@ -25,13 +25,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Vérifie si nous sommes sur la dernière page
     final isLastPage = _currentIndex == onboardingItems.length - 1;
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            // Pages
+            // Pages d'onboarding
             Expanded(
               child: PageView.builder(
                 controller: _controller,
@@ -50,7 +51,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
 
-            // Indicateurs
+            // Indicateurs (Dots)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
@@ -61,10 +62,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   width: _currentIndex == index ? 20 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color:
-                        _currentIndex == index
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.grey,
+                    color: _currentIndex == index
+                        ? const Color(0xFF2D6A4F) // Utilisation de ton vert
+                        : Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -73,7 +73,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
             const SizedBox(height: 24),
 
-            // Bouton
+            // Bouton Dynamique
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: SizedBox(
@@ -81,19 +81,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     if (isLastPage) {
-                      await context.read<UserProvider>().completeOnboarding();
-
-                      if (context.mounted) {
-                        context.go('/login');
-                      }
+                      // 🚀 ACTION FINALE : Terminer l'onboarding
+                      final userProvider = Provider.of<UserProvider>(context, listen: false); 
+                      await userProvider.completeOnboarding();
                     } else {
+                      // ➡️ ACTION INTERMÉDIAIRE : Passer à la page suivante
                       _controller.nextPage(
-                        duration: const Duration(milliseconds: 300),
+                        duration: const Duration(milliseconds: 500),
                         curve: Curves.easeInOut,
                       );
                     }
                   },
-                  child: Text(isLastPage ? "Commencer" : "Suivant"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2D6A4F),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 56),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    // 💡 TEXTE DYNAMIQUE ICI
+                    isLastPage ? "Commencer" : "Continuer",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ),

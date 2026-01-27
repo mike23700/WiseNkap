@@ -18,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   final _nomController = TextEditingController();
   final _prenomController = TextEditingController();
+  
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -35,6 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _showSnackBar(String message, Color color) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -46,7 +48,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   bool _validateInputs() {
-    // Vérifier que les champs ne sont pas vides
     if (_emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty ||
@@ -56,22 +57,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return false;
     }
 
-    // Vérifier que l'email est valide
     if (!_isValidEmail(_emailController.text.trim())) {
       _showSnackBar("Veuillez entrer un email valide", Colors.orange);
       return false;
     }
 
-    // Vérifier que le mot de passe contient au moins 6 caractères
     if (_passwordController.text.length < 6) {
-      _showSnackBar(
-        "Le mot de passe doit contenir au moins 6 caractères",
-        Colors.orange,
-      );
+      _showSnackBar("Le mot de passe doit contenir au moins 6 caractères", Colors.orange);
       return false;
     }
 
-    // Vérifier que les mots de passe correspondent
     if (_passwordController.text != _confirmPasswordController.text) {
       _showSnackBar("Les mots de passe ne correspondent pas", Colors.orange);
       return false;
@@ -81,20 +76,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   bool _isValidEmail(String email) {
-    final emailRegex = RegExp(
-      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-    );
-    return emailRegex.hasMatch(email);
+    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
   }
 
+  // ============================
+  // 📝 INSCRIPTION
+  // ============================
   Future<void> _handleSignUp() async {
-    // Valider les inputs
     if (!_validateInputs()) return;
 
     setState(() => _isLoading = true);
 
     try {
       final userProvider = context.read<UserProvider>();
+      
       final success = await userProvider.register(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -103,37 +98,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (!success) {
-        _showSnackBar(
-          "Cet email est déjà utilisé ou inscription échouée",
-          Colors.red,
-        );
+        // On récupère l'erreur précise du provider si elle existe
+        final errorMsg = userProvider.lastError ?? "L'inscription a échoué. Vérifiez vos informations.";
+        _showSnackBar(errorMsg, Colors.red);
         return;
       }
 
-      if (mounted) {
-        _showSnackBar("Compte créé avec succès 🎉", Colors.green);
+      // ✅ Succès ! 
+      // NOTE : Pas besoin de context.go('/home'). 
+      // Le GoRouter détecte le changement d'état via refreshListenable et redirige seul.
+      _showSnackBar("Compte créé ! Préparation de votre espace... 🎉", Colors.green);
 
-        // Rediriger vers la page home après inscription
-        await Future.delayed(const Duration(seconds: 1));
-        if (mounted) {
-          context.go('/home');
-        }
-      }
     } catch (e) {
-      _showSnackBar("Erreur: $e", Colors.red);
+      _showSnackBar("Une erreur inattendue est survenue", Colors.red);
+      debugPrint('❌ Erreur Inscription: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(leading: BackButton(onPressed: () => context.pop())),
+      appBar: AppBar(
+        leading: BackButton(onPressed: () => context.pop()),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -147,6 +140,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
             const SizedBox(height: 30),
+            
             _buildInput(
               "Nom",
               _nomController,
@@ -157,7 +151,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               "Prénom",
               _prenomController,
               LucideIcons.user,
-              hintText: "Ex: ange",
+              hintText: "Ex: Ange",
             ),
             _buildInput(
               "Email",
@@ -170,17 +164,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
               "Mot de passe",
               _passwordController,
               _obscurePassword,
-              (newValue) => setState(() => _obscurePassword = newValue),
+              (val) => setState(() => _obscurePassword = val),
               hintText: "Minimum 6 caractères",
             ),
             _buildPasswordInput(
               "Confirmer le mot de passe",
               _confirmPasswordController,
               _obscureConfirmPassword,
-              (newValue) => setState(() => _obscureConfirmPassword = newValue),
+              (val) => setState(() => _obscureConfirmPassword = val),
               hintText: "Répétez votre mot de passe",
             ),
-            const SizedBox(height: 30),
+            
+            const SizedBox(height: 24),
+            
             ElevatedButton(
               onPressed: _isLoading ? null : _handleSignUp,
               style: ElevatedButton.styleFrom(
@@ -189,16 +185,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
+                elevation: 0,
               ),
-              child:
-                  _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                        "S'inscrire",
-                        style: TextStyle(color: Colors.white, fontSize: 18),
-                      ),
+              child: _isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      "S'inscrire",
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
             ),
-            const SizedBox(height: 16),
+            
+            const SizedBox(height: 20),
+            
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -207,45 +205,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   onPressed: () => context.go('/login'),
                   child: const Text(
                     "Se connecter",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: primaryColor,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInput(
-    String label,
-    TextEditingController controller,
-    IconData icon, {
-    TextInputType keyboardType = TextInputType.text,
-    String? hintText,
-  }) {
+  // ============================
+  // 🔧 Composants UI
+  // ============================
+  Widget _buildInput(String label, TextEditingController controller, IconData icon, {TextInputType keyboardType = TextInputType.text, String? hintText}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           enabled: !_isLoading,
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 20),
+            prefixIcon: Icon(icon, size: 20, color: primaryColor),
             hintText: hintText,
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             filled: true,
             fillColor: const Color(0xFFF6F6F6),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
           ),
         ),
         const SizedBox(height: 16),
@@ -253,35 +244,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildPasswordInput(
-    String label,
-    TextEditingController controller,
-    bool obscureText,
-    Function(bool) onToggleVisibility, {
-    String? hintText,
-  }) {
+  Widget _buildPasswordInput(String label, TextEditingController controller, bool obscure, Function(bool) onToggle, {String? hintText}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
-          obscureText: obscureText,
+          obscureText: obscure,
           enabled: !_isLoading,
           decoration: InputDecoration(
-            prefixIcon: const Icon(LucideIcons.lock, size: 20),
+            prefixIcon: const Icon(LucideIcons.lock, size: 20, color: primaryColor),
             hintText: hintText,
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             suffixIcon: IconButton(
-              icon: Icon(obscureText ? LucideIcons.eye : LucideIcons.eyeOff),
-              onPressed: () => onToggleVisibility(!obscureText),
+              icon: Icon(obscure ? LucideIcons.eye : LucideIcons.eyeOff, size: 20),
+              onPressed: () => onToggle(!obscure),
             ),
             filled: true,
             fillColor: const Color(0xFFF6F6F6),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
           ),
         ),
         const SizedBox(height: 16),

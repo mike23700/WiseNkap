@@ -44,11 +44,9 @@ class WelcomeScreen extends StatelessWidget {
                 ],
               ),
 
-              // =========================
-              // CENTRE : Illustration
-              // =========================
+              // Illustration
               Image.asset(
-                'assets/wiseNkap.png',
+                'assets/Wallet.png',
                 height: 260,
                 fit: BoxFit.contain,
                 errorBuilder:
