@@ -166,7 +166,7 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
     return success;
   }
-
+  
   Future<bool> register({
     required String email,
     required String password,
@@ -186,17 +186,21 @@ class UserProvider extends ChangeNotifier {
     );
 
     if (success) {
-      debugPrint('✅ Inscription réussie pour: $email');
+      debugPrint('✅ Inscription Auth réussie');
       _isAuthenticated = true;
       try {
-        debugPrint('📥 Chargement du profil après inscription...');
+        // ⏱️ On attend 500ms que le trigger SQL crée la ligne dans 'profiles'
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        debugPrint('📥 Chargement du profil créé par le trigger...');
         await _loadProfile();
-        debugPrint('✅ Profil chargé');
-
-        // NOTE: Les autres providers seront initialisés par l'écran principal
+        
+        // Charger les données initiales (catégories, etc.)
+        await fetchData();
+        
       } catch (e) {
-        _lastError = 'Erreur lors du chargement du profil: $e';
-        debugPrint('❌ ERREUR REGISTER: $_lastError');
+        _lastError = 'Compte créé, mais erreur de synchronisation profil: $e';
+        debugPrint('❌ Erreur post-inscription: $e');
       }
     } else {
       _lastError = error;
