@@ -9,57 +9,44 @@ class TransactionProvider extends ChangeNotifier {
   String? _lastError;
   bool _isLoading = false;
 
-  // Getters
   List<Transaction> get transactions => _transactions;
   String? get lastError => _lastError;
   bool get isLoading => _isLoading;
 
-  // Filtres et groupements
-  List<Transaction> get expenseTransactions =>
-      _transactions.where((t) => t.type == 'depense').toList();
-
-  List<Transaction> get incomeTransactions =>
-      _transactions.where((t) => t.type == 'revenu').toList();
-
+  // Groupement par date pour l'affichage en liste
   Map<String, List<Transaction>> get groupedByDate {
     final Map<String, List<Transaction>> grouped = {};
     for (final t in _transactions) {
-      final key = t.date.toString().split('T').first;
+      final key = t.date.toString().split(' ').first; // Format YYYY-MM-DD
       grouped.putIfAbsent(key, () => []);
       grouped[key]!.add(t);
     }
     return grouped;
   }
 
-  // Fetch transactions
   Future<void> fetchTransactions() async {
     try {
       _isLoading = true;
       _lastError = null;
       notifyListeners();
 
-      debugPrint('📥 Chargement des transactions...');
       final (transactions, error) = await _transactionService.getTransactions();
 
       if (error != null) {
         _lastError = error;
-        _transactions = [];
-        debugPrint('❌ Erreur lors du chargement: $error');
       } else {
         _transactions = transactions;
-        debugPrint('✅ ${_transactions.length} transaction(s) chargée(s)');
+        // Tri du plus récent au plus ancien
+        _transactions.sort((a, b) => b.date.compareTo(a.date));
       }
     } catch (e) {
-      _lastError = 'Erreur lors du chargement des transactions: $e';
-      _transactions = [];
-      debugPrint('❌ EXCEPTION: $_lastError');
+      _lastError = 'Erreur: $e';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  // Add transaction
   Future<bool> addTransaction({
     required double montant,
     required String type,
@@ -67,9 +54,6 @@ class TransactionProvider extends ChangeNotifier {
     required DateTime date,
     required String description,
   }) async {
-    debugPrint('💰 Ajout d\'une transaction: $montant $type');
-    _lastError = null;
-
     final (success, error) = await _transactionService.addTransaction(
       montant: montant,
       type: type,
@@ -79,17 +63,14 @@ class TransactionProvider extends ChangeNotifier {
     );
 
     if (success) {
-      debugPrint('✅ Transaction ajoutée avec succès');
-      await fetchTransactions();
+      await fetchTransactions(); // Rafraîchir la liste
     } else {
       _lastError = error;
-      debugPrint('❌ Erreur lors de l\'ajout: $error');
     }
-
     return success;
   }
-
-  // Update transaction
+  
+  // --- MISE À JOUR ---
   Future<bool> updateTransaction({
     required String transactionId,
     required double montant,
@@ -98,8 +79,9 @@ class TransactionProvider extends ChangeNotifier {
     required DateTime date,
     required String description,
   }) async {
-    debugPrint('✏️ Mise à jour d\'une transaction: $montant $type');
+    _isLoading = true;
     _lastError = null;
+    notifyListeners();
 
     final (success, error) = await _transactionService.updateTransaction(
       transactionId: transactionId,
@@ -111,41 +93,35 @@ class TransactionProvider extends ChangeNotifier {
     );
 
     if (success) {
-      debugPrint('✅ Transaction mise à jour avec succès');
-      await fetchTransactions();
+      debugPrint('✅ Transaction $transactionId mise à jour');
+      await fetchTransactions(); // On recharge tout pour garantir la cohérence
     } else {
       _lastError = error;
-      debugPrint('❌ Erreur lors de la mise à jour: $error');
+      _isLoading = false;
+      notifyListeners();
     }
 
     return success;
   }
 
-  // Delete transaction
+  // --- SUPPRESSION ---
   Future<bool> deleteTransaction(String transactionId) async {
-    debugPrint('🗑️ Suppression d\'une transaction: $transactionId');
     _lastError = null;
-
+    
     final (success, error) = await _transactionService.deleteTransaction(
       transactionId,
     );
 
     if (success) {
-      debugPrint('✅ Transaction supprimée avec succès');
-      await fetchTransactions();
+      debugPrint('🗑️ Transaction $transactionId supprimée');
+      
+      _transactions.removeWhere((t) => t.id == transactionId);
+      notifyListeners();
     } else {
       _lastError = error;
-      debugPrint('❌ Erreur lors de la suppression: $error');
+      notifyListeners();
     }
 
     return success;
-  }
-
-  // Clear data
-  void clear() {
-    _transactions = [];
-    _lastError = null;
-    _isLoading = false;
-    notifyListeners();
   }
 }
