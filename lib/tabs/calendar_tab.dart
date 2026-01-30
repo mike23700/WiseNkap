@@ -17,8 +17,6 @@ class _CalendarTabState extends State<CalendarTab> {
   Widget build(BuildContext context) {
     // On écoute le provider pour réagir aux changements de date du Header
     final store = context.watch<UserProvider>();
-
-    // Note : Pas de 'Expanded' ici, car il est déjà présent dans HomeScreen
     return Container(
       color: Colors.white,
       child: TableCalendar(
@@ -31,9 +29,9 @@ class _CalendarTabState extends State<CalendarTab> {
         calendarFormat: _calendarFormat,
         startingDayOfWeek: StartingDayOfWeek.monday,
         
-        headerVisible: false, // Le Header personnalisé gère déjà l'affichage du mois
+        headerVisible: false, 
         daysOfWeekHeight: 25,
-        rowHeight: 65, // Hauteur augmentée pour laisser de la place aux montants
+        rowHeight: 65, 
 
         calendarStyle: const CalendarStyle(
           outsideDaysVisible: true,
@@ -46,7 +44,6 @@ class _CalendarTabState extends State<CalendarTab> {
           defaultBuilder: (context, day, focusedDay) => _buildCell(day, store),
           todayBuilder: (context, day, focusedDay) => _buildCell(day, store, isToday: true),
           outsideBuilder: (context, day, focusedDay) => _buildCell(day, store, isOutside: true),
-          // Style des noms de jours (L, M, M, J...)
           dowBuilder: (context, day) {
             final days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
             return Center(
@@ -98,7 +95,6 @@ class _CalendarTabState extends State<CalendarTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Numéro du jour en haut à gauche
           Padding(
             padding: const EdgeInsets.all(4.0),
             child: Text(
@@ -111,7 +107,6 @@ class _CalendarTabState extends State<CalendarTab> {
             ),
           ),
           const Spacer(),
-          // Affichage compact des montants
           if (dayRev > 0) _amountLabel(dayRev, Colors.indigo),
           if (dayDep > 0) _amountLabel(dayDep, Colors.orange[800]!),
           const SizedBox(height: 2),
