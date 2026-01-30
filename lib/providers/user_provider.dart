@@ -21,13 +21,14 @@ class UserProvider extends ChangeNotifier {
   Map<String, dynamic>? _profile;
   String? _lastError;
 
-  List<Transaction> _transactions = [];
+  // Stockage de TOUTES les données
+  List<Transaction> _allTransactions = []; 
   List<Budget> _budgets = [];
   List<Category> _categories = [];
   DateTime _selectedDate = DateTime.now();
 
   // ==========================
-  // GETTERS
+  // GETTERS (FILTRÉS PAR DATE)
   // ==========================
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _isAuthenticated;
@@ -36,38 +37,51 @@ class UserProvider extends ChangeNotifier {
   String get displayName => _profile?['nom'] ?? 'Utilisateur';
   String? get email => _profile?['email'];
   String? get userId => _supabase.auth.currentUser?.id;
-  List<Transaction> get transactions => _transactions;
+  DateTime get selectedDate => _selectedDate;
+  Map<String, dynamic>? getProfile() => _profile;
+
+  // FILTRE : Retourne uniquement les transactions du mois sélectionné
+  List<Transaction> get transactions {
+    return _allTransactions.where((t) {
+      return t.date.year == _selectedDate.year && 
+             t.date.month == _selectedDate.month;
+    }).toList();
+  }
+
   List<Budget> get budgets => _budgets;
   List<Category> get categories => _categories;
-  DateTime get selectedDate => _selectedDate;
-
-  Map<String, dynamic>? getProfile() => _profile;
 
   // Filtrage catégories
   List<Category> get incomeCategories => _categories.where((c) => c.type == 'revenu').toList();
   List<Category> get expenseCategories => _categories.where((c) => c.type == 'depense').toList();
 
-  // Calculs financiers
-  double get totalRevenus => _transactions.where((t) => t.type == 'revenu').fold(0, (sum, t) => sum + t.amount);
-  double get totalDepenses => _transactions.where((t) => t.type == 'depense').fold(0, (sum, t) => sum + t.amount);
+  // CALCULS FINANCIERS 
+  double get totalRevenus => transactions
+      .where((t) => t.type == 'revenu')
+      .fold(0, (sum, t) => sum + t.amount);
+
+  double get totalDepenses => transactions
+      .where((t) => t.type == 'depense')
+      .fold(0, (sum, t) => sum + t.amount);
+
   double get epargneTotale => totalRevenus - totalDepenses;
   
-  // Getters Statistiques (Requis par profile_screen.dart)
-  int get totalDepensesCount => _transactions.where((t) => t.type == 'depense').length;
-  int get totalRevenusCount => _transactions.where((t) => t.type == 'revenu').length;
+  // Statistiques
+  int get totalDepensesCount => transactions.where((t) => t.type == 'depense').length;
+  int get totalRevenusCount => transactions.where((t) => t.type == 'revenu').length;
   
   int get moisActifs {
     final months = <String>{};
-    for (final tx in _transactions) {
+    for (final tx in _allTransactions) {
       months.add('${tx.date.year}-${tx.date.month}');
     }
     return months.isEmpty ? 1 : months.length;
   }
 
-  // Groupement par date pour ListTab
+  // Groupement par date pour ListTab (Basé sur la liste filtrée)
   Map<String, List<Transaction>> get groupedTransactions {
     final Map<String, List<Transaction>> grouped = {};
-    for (final t in _transactions) {
+    for (final t in transactions) {
       final key = t.date.toString().split(' ').first; 
       grouped.putIfAbsent(key, () => []);
       grouped[key]!.add(t);
@@ -173,8 +187,8 @@ class UserProvider extends ChangeNotifier {
   Future<void> fetchTransactions() async {
     final (data, error) = await _transactionService.getTransactions();
     if (error == null) {
-      _transactions = data;
-      _transactions.sort((a, b) => b.date.compareTo(a.date));
+      _allTransactions = data;
+      _allTransactions.sort((a, b) => b.date.compareTo(a.date));
     }
     notifyListeners();
   }
@@ -194,14 +208,14 @@ class UserProvider extends ChangeNotifier {
   Future<bool> deleteTransaction(String transactionId) async {
     final (success, error) = await _transactionService.deleteTransaction(transactionId);
     if (success) {
-      _transactions.removeWhere((t) => t.id == transactionId);
+      _allTransactions.removeWhere((t) => t.id == transactionId);
       notifyListeners();
     }
     return success;
   }
 
   // ==========================
-  // BUDGETS (Requis par budgets_screen.dart)
+  // BUDGETS
   // ==========================
   Future<void> fetchBudgets() async {
     final uid = userId;
@@ -232,7 +246,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   double getBudgetUsage(String categoryId, DateTime month) {
-    return _transactions
+    return _allTransactions
         .where((t) => t.type == 'depense' && 
                       t.category?.id == categoryId && 
                       t.date.year == month.year && 
@@ -261,7 +275,7 @@ class UserProvider extends ChangeNotifier {
     _profile = null;
     _isAuthenticated = false;
     _hasCompletedOnboarding = false;
-    _transactions = [];
+    _allTransactions = [];
     _budgets = [];
     _categories = [];
     notifyListeners();
@@ -272,6 +286,7 @@ class UserProvider extends ChangeNotifier {
     clearAllData();
   }
 
+  // Changement de mois : Déclenche la mise à jour des getters filtrés
   void updateSelectedDate(DateTime date) {
     _selectedDate = date;
     notifyListeners();
