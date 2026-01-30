@@ -202,8 +202,8 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
     setState(() => _isSaving = true);
     
     try {
-      // On utilise le TransactionProvider pour l'ajout
-      final success = await context.read<TransactionProvider>().addTransaction(
+      // On utilise le UserProvider pour l'ajout
+      final success = await context.read<UserProvider>().addTransaction(
         montant: amount,
         type: isIncome ? 'revenu' : 'depense',
         categorieId: _selectedCategory!.id,

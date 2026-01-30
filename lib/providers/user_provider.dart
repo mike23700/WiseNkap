@@ -12,544 +12,266 @@ class UserProvider extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
   final AuthService _authService = AuthService();
   final OnboardingService _onboardingService = OnboardingService();
-
-  // Services pour les données
   final TransactionService _transactionService = TransactionService();
   final BudgetService _budgetService = BudgetService();
 
-  // ==========================
-  // ÉTATS (CORE ONLY)
-  // ==========================
   bool _isLoading = true;
   bool _isAuthenticated = false;
   bool _hasCompletedOnboarding = false;
-
   Map<String, dynamic>? _profile;
   String? _lastError;
 
-  // États pour transactions, budgets, catégories
   List<Transaction> _transactions = [];
   List<Budget> _budgets = [];
   List<Category> _categories = [];
   DateTime _selectedDate = DateTime.now();
 
   // ==========================
-  // GETTERS (CORE ONLY)
+  // GETTERS
   // ==========================
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _isAuthenticated;
   bool get hasCompletedOnboarding => _hasCompletedOnboarding;
   String? get lastError => _lastError;
-
   String get displayName => _profile?['nom'] ?? 'Utilisateur';
   String? get email => _profile?['email'];
   String? get userId => _supabase.auth.currentUser?.id;
+  List<Transaction> get transactions => _transactions;
+  List<Budget> get budgets => _budgets;
+  List<Category> get categories => _categories;
+  DateTime get selectedDate => _selectedDate;
 
   Map<String, dynamic>? getProfile() => _profile;
 
-  // Getters pour transactions
-  List<Transaction> get transactions => _transactions;
-  List<Transaction> get expenseTransactions =>
-      _transactions.where((t) => t.type == 'depense').toList();
-  List<Transaction> get incomeTransactions =>
-      _transactions.where((t) => t.type == 'revenu').toList();
+  // Filtrage catégories
+  List<Category> get incomeCategories => _categories.where((c) => c.type == 'revenu').toList();
+  List<Category> get expenseCategories => _categories.where((c) => c.type == 'depense').toList();
 
-  // Getters pour budgets
-  List<Budget> get budgets => _budgets;
-
-  // Getters pour catégories
-  List<Category> get categories => _categories;
-  List<Category> get incomeCategories =>
-      _categories.where((c) => c.type == 'revenu').toList();
-  List<Category> get expenseCategories =>
-      _categories.where((c) => c.type == 'depense').toList();
-
-  // Getters pour calculs financiers
-  double get totalRevenus => _transactions
-      .where((t) => t.type == 'revenu')
-      .fold(0, (sum, t) => sum + t.amount);
-  double get totalDepenses => _transactions
-      .where((t) => t.type == 'depense')
-      .fold(0, (sum, t) => sum + t.amount);
+  // Calculs financiers
+  double get totalRevenus => _transactions.where((t) => t.type == 'revenu').fold(0, (sum, t) => sum + t.amount);
+  double get totalDepenses => _transactions.where((t) => t.type == 'depense').fold(0, (sum, t) => sum + t.amount);
   double get epargneTotale => totalRevenus - totalDepenses;
-
-  // Getters pour comptages
-  int get totalDepensesCount =>
-      _transactions.where((t) => t.type == 'depense').length;
-  int get totalRevenusCount =>
-      _transactions.where((t) => t.type == 'revenu').length;
-
-  // Getter pour mois actifs
+  
+  // Getters Statistiques (Requis par profile_screen.dart)
+  int get totalDepensesCount => _transactions.where((t) => t.type == 'depense').length;
+  int get totalRevenusCount => _transactions.where((t) => t.type == 'revenu').length;
+  
   int get moisActifs {
     final months = <String>{};
     for (final tx in _transactions) {
-      months.add('${tx.date.year}-${tx.date.month.toString().padLeft(2, '0')}');
+      months.add('${tx.date.year}-${tx.date.month}');
     }
-    return months.length;
+    return months.isEmpty ? 1 : months.length;
   }
 
-  // Getter pour transactions groupées par date
+  // Groupement par date pour ListTab
   Map<String, List<Transaction>> get groupedTransactions {
     final Map<String, List<Transaction>> grouped = {};
     for (final t in _transactions) {
-      final key = t.date.toString().split('T').first;
+      final key = t.date.toString().split(' ').first; 
       grouped.putIfAbsent(key, () => []);
       grouped[key]!.add(t);
     }
     return grouped;
   }
 
-  // Getter pour date sélectionnée
-  DateTime get selectedDate => _selectedDate;
-
   // ==========================
-  // INITIALISATION
+  // INITIALISATION & AUTH
   // ==========================
   Future<void> init() async {
     try {
-      debugPrint('🔄 Initialisation du UserProvider...');
+      _isLoading = true;
       final session = _supabase.auth.currentSession;
       if (session != null) {
-        debugPrint('✅ Session trouvée pour: ${session.user.email}');
         _isAuthenticated = true;
         await _loadProfile();
         await fetchData();
-        debugPrint('✅ Données chargées avec succès');
-      } else {
-        debugPrint('⚠️ Aucune session trouvée');
       }
     } catch (e) {
-      _lastError = 'Erreur lors de l\'initialisation: $e';
-      debugPrint('❌ ERREUR INIT: $_lastError');
+      _lastError = e.toString();
     } finally {
       _isLoading = false;
       notifyListeners();
-      debugPrint('✅ Initialisation terminée');
     }
   }
 
-  // ==========================
-  // AUTHENTIFICATION
-  // ==========================
   Future<bool> login({required String email, required String password}) async {
-    debugPrint('🔑 Tentative de connexion: $email');
     _isLoading = true;
     _lastError = null;
     notifyListeners();
-
-    final (success, error) = await _authService.login(
-      email: email,
-      password: password,
-    );
-
+    final (success, error) = await _authService.login(email: email, password: password);
     if (success) {
-      debugPrint('✅ Authentification réussie pour: $email');
       _isAuthenticated = true;
-      try {
-        debugPrint('📥 Chargement du profil...');
-        await _loadProfile();
-        debugPrint('✅ Profil chargé');
-
-        // NOTE: Les autres providers (TransactionProvider, BudgetProvider,
-        // CategoryProvider) seront initialisés par l'écran principal
-      } catch (e) {
-        _lastError = 'Erreur lors du chargement du profil: $e';
-        debugPrint('❌ ERREUR LOGIN: $_lastError');
-      }
+      await _loadProfile();
+      await fetchData();
     } else {
       _lastError = error;
-      _isAuthenticated = false;
-      debugPrint('❌ Échec de l\'authentification: $error');
     }
-
-    _isLoading = false;
-    notifyListeners();
-    return success;
-  }
-  
-  Future<bool> register({
-    required String email,
-    required String password,
-    required String nom,
-    required String prenom,
-  }) async {
-    debugPrint('📝 Tentative d\'inscription: $email');
-    _isLoading = true;
-    _lastError = null;
-    notifyListeners();
-
-    final (success, error) = await _authService.register(
-      email: email,
-      password: password,
-      nom: nom,
-      prenom: prenom,
-    );
-
-    if (success) {
-      debugPrint('✅ Inscription Auth réussie');
-      _isAuthenticated = true;
-      try {
-        // ⏱️ On attend 500ms que le trigger SQL crée la ligne dans 'profiles'
-        await Future.delayed(const Duration(milliseconds: 500));
-        
-        debugPrint('📥 Chargement du profil créé par le trigger...');
-        await _loadProfile();
-        
-        // Charger les données initiales (catégories, etc.)
-        await fetchData();
-        
-      } catch (e) {
-        _lastError = 'Compte créé, mais erreur de synchronisation profil: $e';
-        debugPrint('❌ Erreur post-inscription: $e');
-      }
-    } else {
-      _lastError = error;
-      _isAuthenticated = false;
-      debugPrint('❌ Échec de l\'inscription: $error');
-    }
-
     _isLoading = false;
     notifyListeners();
     return success;
   }
 
-  Future<void> logout() async {
-    debugPrint('🚪 Déconnexion en cours...');
-    try {
-      debugPrint('🔌 Appel du service d\'authentification...');
-      await _authService.logout();
-      debugPrint('✅ Service d\'authentification déconnecté');
-
-      debugPrint('🗑️ Nettoyage des données...');
-      clearAllData();
-
-      debugPrint('✅ DÉCONNEXION RÉUSSIE');
-    } catch (e) {
-      debugPrint('❌ Erreur lors de la déconnexion: $e');
-      rethrow;
+  Future<bool> register({required String email, required String password, required String nom, required String prenom}) async {
+    _isLoading = true;
+    _lastError = null;
+    notifyListeners();
+    final (success, error) = await _authService.register(email: email, password: password, nom: nom, prenom: prenom);
+    if (success) {
+      _isAuthenticated = true;
+      await Future.delayed(const Duration(milliseconds: 800));
+      await _loadProfile();
+      await fetchData();
+    } else {
+      _lastError = error;
     }
+    _isLoading = false;
+    notifyListeners();
+    return success;
   }
 
   // ==========================
-  // PROFIL ET ONBOARDING
+  // PROFIL & ONBOARDING
   // ==========================
   Future<void> _loadProfile() async {
-    try {
-      debugPrint('📥 Chargement du profil depuis Supabase...');
-      final (profile, error) = await _onboardingService.getUserProfile();
-      if (error != null) {
-        _lastError = error;
-        debugPrint('❌ Erreur lors du chargement du profil: $error');
-        return;
-      }
+    final (profile, error) = await _onboardingService.getUserProfile();
+    if (error == null) {
       _profile = profile;
       _hasCompletedOnboarding = profile?['onboarding_done'] as bool? ?? false;
-      debugPrint(
-        '✅ Profil chargé: ${profile?['nom'] ?? 'N/A'}, onboarding_done: $_hasCompletedOnboarding',
-      );
-    } catch (e) {
-      _lastError = 'Erreur lors du chargement du profil: $e';
-      debugPrint('❌ EXCEPTION: $_lastError');
     }
   }
 
   Future<bool> completeOnboarding() async {
-    debugPrint('🎯 Marquage du onboarding comme complété');
-    // Marquer localement comme complété, même si pas encore authentifié
     _hasCompletedOnboarding = true;
     notifyListeners();
-    debugPrint('✅ Onboarding marqué localement: $_hasCompletedOnboarding');
-
-    // Essayer de mettre à jour dans Supabase si l'utilisateur est authentifié
     if (_isAuthenticated) {
-      debugPrint('📤 Utilisateur authentifié, mise à jour dans Supabase...');
       final (success, error) = await _onboardingService.completeOnboarding();
-      if (!success) {
-        _lastError = error;
-        debugPrint('❌ Erreur Supabase: $error');
-        return false;
-      }
-      debugPrint('✅ Onboarding mis à jour dans Supabase');
-    } else {
-      debugPrint(
-        '⚠️ Utilisateur non authentifié, onboarding sera mis à jour lors de la connexion',
-      );
+      if (!success) _lastError = error;
+      return success;
     }
     return true;
   }
 
-  Future<bool> updateProfile({
-    required String prenom,
-    required String nom,
-  }) async {
-    debugPrint('📝 Mise à jour du profil: $prenom $nom');
+  Future<bool> updateProfile({required String prenom, required String nom}) async {
     try {
-      final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) {
-        _lastError = 'Utilisateur non authentifié';
-        return false;
-      }
-
-      await _supabase
-          .from('utilisateurs')
-          .update({'prenom': prenom, 'nom': nom})
-          .eq('id', userId);
-
+      final uid = userId;
+      if (uid == null) return false;
+      await _supabase.from('profiles').update({'prenom': prenom, 'nom': nom}).eq('id', uid);
       _profile?['prenom'] = prenom;
       _profile?['nom'] = nom;
       notifyListeners();
-      debugPrint('✅ Profil mis à jour avec succès');
       return true;
     } catch (e) {
-      _lastError = 'Erreur lors de la mise à jour du profil: $e';
-      debugPrint('❌ Erreur: $_lastError');
+      _lastError = e.toString();
       return false;
     }
-  }
-
-  // ==========================
-  // Cleanup (pour les autres providers)
-  // ==========================
-  void clearAllData() {
-    _profile = null;
-    _isAuthenticated = false;
-    _hasCompletedOnboarding = false;
-    _lastError = null;
-    _transactions = [];
-    _budgets = [];
-    _categories = [];
-    notifyListeners();
-  }
-
-  // ==========================
-  // Méthode fetchData pour charger toutes les données
-  // ==========================
-  Future<void> fetchData() async {
-    try {
-      debugPrint('📥 Chargement de toutes les données...');
-      await Future.wait([
-        fetchTransactions(),
-        fetchBudgets(),
-        fetchCategories(),
-      ]);
-      debugPrint('✅ Toutes les données chargées');
-    } catch (e) {
-      _lastError = 'Erreur lors du chargement des données: $e';
-      debugPrint('❌ ERREUR: $_lastError');
-    }
-    notifyListeners();
   }
 
   // ==========================
   // TRANSACTIONS
   // ==========================
   Future<void> fetchTransactions() async {
-    try {
-      debugPrint('📥 Chargement des transactions...');
-      final (transactions, error) = await _transactionService.getTransactions();
-
-      if (error != null) {
-        _lastError = error;
-        _transactions = [];
-        debugPrint('❌ Erreur: $error');
-      } else {
-        _transactions = transactions;
-        debugPrint('✅ ${_transactions.length} transaction(s) chargée(s)');
-      }
-    } catch (e) {
-      _lastError = 'Erreur: $e';
-      _transactions = [];
-      debugPrint('❌ EXCEPTION: $_lastError');
+    final (data, error) = await _transactionService.getTransactions();
+    if (error == null) {
+      _transactions = data;
+      _transactions.sort((a, b) => b.date.compareTo(a.date));
     }
     notifyListeners();
   }
 
-  Future<bool> addTransaction({
-    required double montant,
-    required String type,
-    required String categorieId,
-    required DateTime date,
-    required String description,
-  }) async {
-    debugPrint('💰 Ajout transaction: $montant $type');
-    final (success, error) = await _transactionService.addTransaction(
-      montant: montant,
-      type: type,
-      categorieId: categorieId,
-      date: date,
-      description: description,
-    );
-
-    if (success) {
-      await fetchTransactions();
-    } else {
-      _lastError = error;
-    }
+  Future<bool> addTransaction({required double montant, required String type, required String categorieId, required DateTime date, required String description}) async {
+    final (success, error) = await _transactionService.addTransaction(montant: montant, type: type, categorieId: categorieId, date: date, description: description);
+    if (success) await fetchTransactions();
     return success;
   }
 
-  Future<bool> updateTransaction({
-    required String transactionId,
-    required double montant,
-    required String type,
-    required String categorieId,
-    required DateTime date,
-    required String description,
-  }) async {
-    debugPrint('✏️ Mise à jour transaction: $transactionId');
-    final (success, error) = await _transactionService.updateTransaction(
-      transactionId: transactionId,
-      montant: montant,
-      type: type,
-      categorieId: categorieId,
-      date: date,
-      description: description,
-    );
-
-    if (success) {
-      await fetchTransactions();
-    } else {
-      _lastError = error;
-    }
+  Future<bool> updateTransaction({required String transactionId, required double montant, required String type, required String categorieId, required DateTime date, required String description}) async {
+    final (success, error) = await _transactionService.updateTransaction(transactionId: transactionId, montant: montant, type: type, categorieId: categorieId, date: date, description: description);
+    if (success) await fetchTransactions();
     return success;
   }
 
   Future<bool> deleteTransaction(String transactionId) async {
-    debugPrint('🗑️ Suppression transaction: $transactionId');
-    final (success, error) = await _transactionService.deleteTransaction(
-      transactionId,
-    );
-
+    final (success, error) = await _transactionService.deleteTransaction(transactionId);
     if (success) {
-      await fetchTransactions();
-    } else {
-      _lastError = error;
+      _transactions.removeWhere((t) => t.id == transactionId);
+      notifyListeners();
     }
     return success;
   }
 
   // ==========================
-  // BUDGETS
+  // BUDGETS (Requis par budgets_screen.dart)
   // ==========================
   Future<void> fetchBudgets() async {
-    try {
-      final uid = userId;
-      if (uid == null) return;
-
-      debugPrint('📥 Chargement des budgets...');
-      final (budgets, error) = await _budgetService.fetchBudgets(uid);
-
-      if (error != null) {
-        _lastError = error;
-        _budgets = [];
-        debugPrint('❌ Erreur: $error');
-      } else {
-        _budgets = budgets;
-        debugPrint('✅ ${_budgets.length} budget(s) chargé(s)');
-      }
-    } catch (e) {
-      _lastError = 'Erreur: $e';
-      _budgets = [];
-      debugPrint('❌ EXCEPTION: $_lastError');
-    }
+    final uid = userId;
+    if (uid == null) return;
+    final (b, error) = await _budgetService.fetchBudgets(uid);
+    if (error == null) _budgets = b;
     notifyListeners();
   }
 
-  Future<bool> addBudget({
-    required String categoryId,
-    required double limitAmount,
-  }) async {
-    debugPrint('➕ Création budget: $limitAmount');
+  Future<bool> addBudget({required String categoryId, required double limitAmount}) async {
     final uid = userId;
     if (uid == null) return false;
-
-    final (success, error) = await _budgetService.createBudget(
-      userId: uid,
-      categoryId: categoryId,
-      limitAmount: limitAmount,
-    );
-
-    if (success) {
-      await fetchBudgets();
-    } else {
-      _lastError = error;
-    }
+    final (success, error) = await _budgetService.createBudget(userId: uid, categoryId: categoryId, limitAmount: limitAmount);
+    if (success) await fetchBudgets();
     return success;
   }
 
-  Future<bool> updateBudget({
-    required String budgetId,
-    required double limitAmount,
-  }) async {
-    debugPrint('📝 Mise à jour budget: $budgetId');
-    final uid = userId;
-    if (uid == null) return false;
-
-    final (success, error) = await _budgetService.updateBudget(
-      budgetId: budgetId,
-      limitAmount: limitAmount,
-    );
-
-    if (success) {
-      await fetchBudgets();
-    } else {
-      _lastError = error;
-    }
+  Future<bool> updateBudget({required String budgetId, required double limitAmount}) async {
+    final (success, error) = await _budgetService.updateBudget(budgetId: budgetId, limitAmount: limitAmount);
+    if (success) await fetchBudgets();
     return success;
   }
 
   Future<bool> deleteBudget(String budgetId) async {
-    debugPrint('🗑️ Suppression budget: $budgetId');
-    final uid = userId;
-    if (uid == null) return false;
-
     final (success, error) = await _budgetService.deleteBudget(budgetId);
-
-    if (success) {
-      await fetchBudgets();
-    } else {
-      _lastError = error;
-    }
+    if (success) await fetchBudgets();
     return success;
   }
 
   double getBudgetUsage(String categoryId, DateTime month) {
-    double spent = 0;
-    for (var tx in _transactions) {
-      if (tx.type == 'depense' && tx.category?.id == categoryId) {
-        if (tx.date.year == month.year && tx.date.month == month.month) {
-          spent += tx.amount;
-        }
-      }
-    }
-    return spent;
+    return _transactions
+        .where((t) => t.type == 'depense' && 
+                      t.category?.id == categoryId && 
+                      t.date.year == month.year && 
+                      t.date.month == month.month)
+        .fold(0, (sum, t) => sum + t.amount);
   }
 
   // ==========================
-  // CATÉGORIES
+  // UTILS
   // ==========================
   Future<void> fetchCategories() async {
     try {
-      debugPrint('📥 Chargement des catégories...');
       final data = await _supabase.from('categories').select();
-
-      _categories =
-          (data as List)
-              .map((item) => Category.fromJson(item as Map<String, dynamic>))
-              .toList();
-
-      debugPrint('✅ ${_categories.length} catégorie(s) chargée(s)');
+      _categories = (data as List).map((item) => Category.fromJson(item)).toList();
     } catch (e) {
-      _lastError = 'Erreur: $e';
-      _categories = [];
-      debugPrint('❌ EXCEPTION: $_lastError');
+      _lastError = e.toString();
     }
     notifyListeners();
   }
 
-  // ==========================
-  // DATE SELECTION
-  // ==========================
+  Future<void> fetchData() async {
+    await Future.wait([fetchTransactions(), fetchBudgets(), fetchCategories()]);
+  }
+
+  void clearAllData() {
+    _profile = null;
+    _isAuthenticated = false;
+    _hasCompletedOnboarding = false;
+    _transactions = [];
+    _budgets = [];
+    _categories = [];
+    notifyListeners();
+  }
+
+  Future<void> logout() async {
+    await _authService.logout();
+    clearAllData();
+  }
+
   void updateSelectedDate(DateTime date) {
     _selectedDate = date;
     notifyListeners();
