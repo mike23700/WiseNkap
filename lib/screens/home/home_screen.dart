@@ -31,7 +31,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // On utilise watch pour que l'UI réagisse aux changements du UserProvider
     final store = context.watch<UserProvider>();
 
     return Scaffold(
@@ -49,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(child: _tabs[_activeTabIndex]),
             ],
           ),
-      // Configuration pour le bouton flottant au milieu de la barre
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: _buildFAB(),
       bottomNavigationBar: _buildBottomBar(),
@@ -110,30 +108,33 @@ class _HomeScreenState extends State<HomeScreen> {
       notchMargin: 8,
       color: const Color(0xFF2D6A4F).withOpacity(0.08),
       elevation: 0, 
-      child: Container(
+      child: SizedBox(
         height: 60,
- 
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
+            // Icône Calendrier (Home)
             IconButton(
               icon: Icon(LucideIcons.calendar, 
-                color: _activeTabIndex == 1 ? const Color(0xFF2D6A4F) : Colors.grey),
-              onPressed: () => setState(() => _activeTabIndex = 1),
+                color: _activeTabIndex == 0 ? const Color(0xFF2D6A4F) : Colors.grey),
+              onPressed: () => setState(() => _activeTabIndex = 0),
             ),
+            // Icône Charts (Stats)
             IconButton(
               icon: Icon(LucideIcons.barChart2, 
                 color: _activeTabIndex == 3 ? const Color(0xFF2D6A4F) : Colors.grey),
               onPressed: () => setState(() => _activeTabIndex = 3),
             ),
             
-            const SizedBox(width: 40), 
+            const SizedBox(width: 40),
 
+            // Icône Dollar (Budget)
             IconButton(
               icon: Icon(LucideIcons.dollarSign, 
                 color: _activeTabIndex == 2 ? const Color(0xFF2D6A4F) : Colors.grey),
               onPressed: () => setState(() => _activeTabIndex = 2),
             ),
+            // Icône User (Profil)
             IconButton(
               icon: const Icon(LucideIcons.user, color: Colors.grey), 
               onPressed: () => context.push('/profile'),
