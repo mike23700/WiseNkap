@@ -107,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // ✅ Succès ! 
       // NOTE : Pas besoin de context.go('/home'). 
       // Le GoRouter détecte le changement d'état via refreshListenable et redirige seul.
-      _showSnackBar("Compte créé ! Préparation de votre espace... 🎉", Colors.green);
+      _showSnackBar("Compte créé ! Préparation de votre espace... ", Colors.green);
 
     } catch (e) {
       _showSnackBar("Une erreur inattendue est survenue", Colors.red);

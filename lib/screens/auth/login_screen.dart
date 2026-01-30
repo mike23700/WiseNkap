@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      _showSnackBar("Bienvenue à wiseNkap 🎉", Colors.green);
+      _showSnackBar("Bienvenue à wiseNkap", Colors.green);
       debugPrint('🚀 Navigation vers /home');
 
       // ✅ NAVIGATION GoRouter
