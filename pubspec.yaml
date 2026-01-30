@@ -41,10 +41,10 @@ flutter_icons:
   image_path: "assets/wiseNkap.png"
 
 flutter_native_splash:
-  color: "#ffffff"               # Ton fond blanc
-  image: assets/wiseNkap.png    # Le chemin vers ton icone
+  color: "#ffffff"               
+  image: assets/wiseNkap.png      
   android_12:
-    image: assets/wiseNkap.png  # Spécifique pour Android 12+
+    image: assets/wiseNkap.png  
     color: "#ffffff"
 
 flutter:
