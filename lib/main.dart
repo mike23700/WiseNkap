@@ -15,43 +15,48 @@ import 'router/app_router.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  
+
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  bool supabaseOk = true;
 
   try {
     await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("Erreur chargement .env : $e");
+  }
 
+  try {
     await Supabase.initialize(
-      url: dotenv.env['SUPABASE_URL']!,
-      anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
-    );
-
-    await initializeDateFormatting('fr_FR', null);
-
-    runApp(
-      MultiProvider(
-        providers: [
-          // On initialise le UserProvider
-          ChangeNotifierProvider(create: (_) => UserProvider()..init()),
-          ChangeNotifierProvider(create: (_) => TransactionProvider()),
-          ChangeNotifierProvider(create: (_) => BudgetProvider()),
-          ChangeNotifierProvider(create: (_) => CategoryProvider()),
-          Provider(create: (_) => FinancialService()),
-        ],
-        child: const MyApp(),
-      ),
+      url: dotenv.env['SUPABASE_URL'] ?? '',
+      anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
     );
   } catch (e) {
-    FlutterNativeSplash.remove(); 
-    runApp(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(child: Text("Erreur lors du démarrage : $e")),
-        ),
-      ),
-    );
+    supabaseOk = false;
+    debugPrint("Supabase error: $e");
   }
+
+  try {
+    await initializeDateFormatting('fr_FR', null);
+  } catch (e) {
+    debugPrint("Date formatting error: $e");
+  }
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()..init()),
+        ChangeNotifierProvider(create: (_) => TransactionProvider()),
+        ChangeNotifierProvider(create: (_) => BudgetProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryProvider()),
+        Provider(create: (_) => FinancialService()),
+        Provider<bool>.value(value: supabaseOk), 
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
+
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
