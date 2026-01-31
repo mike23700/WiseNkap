@@ -28,7 +28,7 @@ class Transaction {
       amount: (json['montant'] ?? 0).toDouble(),
       date: json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
       description: json['description'],
-      type: json['type'] ?? (json['table'] == 'revenus' ? 'revenu' : 'depense'),
+      type: json['type'] ?? 'depense',
       category: json['categories'] != null 
           ? Category.fromJson(json['categories'])
           : null,
@@ -40,13 +40,12 @@ class Transaction {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'user_id': userId,
       'montant': amount,
       'date': date.toIso8601String().split('T')[0],
       'description': description,
+      'type': type,
       'categorie_id': category?.id,
-      'created_at': createdAt.toIso8601String(),
     };
   }
 

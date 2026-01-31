@@ -1,84 +1,112 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; 
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'services/supabase_config.dart';
-import 'providers/user_provider.dart'; 
-import 'screens/welcome_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/login_screen.dart';
-import 'screens/register_screen.dart';
-import 'screens/profile_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:go_router/go_router.dart'; 
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+
+import 'providers/user_provider.dart';
+import 'providers/transaction_provider.dart';
+import 'providers/budget_provider.dart';
+import 'providers/category_provider.dart';
+import 'services/financial_service.dart';
+import 'router/app_router.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('fr_FR');
-  await SupabaseConfig.init();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  bool supabaseOk = true;
+
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("Erreur chargement .env : $e");
+  }
+
+  try {
+    await Supabase.initialize(
+      url: dotenv.env['SUPABASE_URL'] ?? '',
+      anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+    );
+  } catch (e) {
+    supabaseOk = false;
+    debugPrint("Supabase error: $e");
+  }
+
+  try {
+    await initializeDateFormatting('fr_FR', null);
+  } catch (e) {
+    debugPrint("Date formatting error: $e");
+  }
 
   runApp(
-    // Injection du Provider au sommet de l'application
-    ChangeNotifierProvider(
-      create: (_) => UserProvider(),
-      child: const SpendwiseApp(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()..init()),
+        ChangeNotifierProvider(create: (_) => TransactionProvider()),
+        ChangeNotifierProvider(create: (_) => BudgetProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryProvider()),
+        Provider(create: (_) => FinancialService()),
+        Provider<bool>.value(value: supabaseOk), 
+      ],
+      child: const MyApp(),
     ),
   );
 }
 
-class SpendwiseApp extends StatelessWidget {
-  const SpendwiseApp({super.key});
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Spendwise',
-      debugShowCheckedModeBanner: false,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('fr', 'FR')],
-      locale: const Locale('fr', 'FR'),
-      theme: ThemeData(
-        primaryColor: const Color(0xFF2D6A4F),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2D6A4F)),
-        useMaterial3: true,
-      ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const AuthGate(),
-        '/home': (context) => const HomeScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/profile': (context) => const ProfileScreen(),
-      },
-    );
-  }
+  State<MyApp> createState() => _MyAppState();
 }
 
-class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
+class _MyAppState extends State<MyApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    _router = createRouter(userProvider);
+    
+    _removeSplashWhenReady();
+  }
+
+  void _removeSplashWhenReady() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    
+    // On attend que le UserProvider ait fini son chargement initial (isLoading == false)
+    if (userProvider.isLoading) {
+      // On écoute une seule fois le changement de isLoading
+      userProvider.addListener(_onUserProviderLoaded);
+    } else {
+      FlutterNativeSplash.remove();
+    }
+  }
+
+  void _onUserProviderLoaded() {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    if (!userProvider.isLoading) {
+      FlutterNativeSplash.remove();
+      userProvider.removeListener(_onUserProviderLoaded);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF2D6A4F))));
-        }
-
-        final session = snapshot.data?.session;
-
-        if (session != null) {
-          // On lance le chargement des données dès que l'utilisateur est connecté
-          Future.microtask(() => context.read<UserProvider>().fetchData());
-          return const HomeScreen();
-        } else {
-          return const WelcomeScreen();
-        }
-      },
+    return MaterialApp.router(
+      title: 'WiseNkap',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: const Color(0xFF2D6A4F),
+      ),
+      routerConfig: _router,
     );
   }
 }

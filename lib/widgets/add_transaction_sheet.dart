@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
+import '../providers/transaction_provider.dart'; 
 import '../providers/user_provider.dart';
+import '../models/category.dart';
 
 class AddTransactionSheet extends StatefulWidget {
   final VoidCallback onTransactionAdded;
@@ -14,184 +15,266 @@ class AddTransactionSheet extends StatefulWidget {
 }
 
 class _AddTransactionSheetState extends State<AddTransactionSheet> {
-  final _supabase = Supabase.instance.client;
   bool isIncome = true;
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
   DateTime selectedDate = DateTime.now();
   bool _isSaving = false;
-  Map<String, dynamic>? _selectedCategory;
+  Category? _selectedCategory;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _setDefaultCategory());
+    Future.microtask(() => _setDefaultCategory());
   }
 
   void _setDefaultCategory() {
-    final store = Provider.of<UserProvider>(context, listen: false);
-    final categories = isIncome ? store.incomeCategories : store.expenseCategories;
-    if (categories.isNotEmpty) {
-      setState(() => _selectedCategory = categories[0]);
-    }
+    final userStore = Provider.of<UserProvider>(context, listen: false);
+    final categories =
+        isIncome ? userStore.incomeCategories : userStore.expenseCategories;
+
+    setState(() {
+      _selectedCategory = categories.isNotEmpty ? categories[0] : null;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final store = context.watch<UserProvider>();
-    final categories = isIncome ? store.incomeCategories : store.expenseCategories;
+    final userStore = context.watch<UserProvider>();
+    final categories =
+        isIncome ? userStore.incomeCategories : userStore.expenseCategories;
 
-    return Container(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        top: 20, left: 20, right: 20
-      ),
-      decoration: const BoxDecoration(
-        color: Colors.white, 
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25))
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
-            const SizedBox(height: 20),
-            
-            // Sélecteur Revenu / Dépense
-            Row(
-              children: [
-                _buildTypeTab("Revenu", true, const Color(0xFF2D6A4F)),
-                const SizedBox(width: 10),
-                _buildTypeTab("Dépense", false, Colors.red),
-              ],
-            ),
-            const SizedBox(height: 25),
-
-            TextField(
-              controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: "Montant",
-                prefixText: "FCFA ",
-                filled: true,
-                fillColor: Colors.grey[50],
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-              ),
-            ),
-            const SizedBox(height: 15),
-
-            DropdownButtonFormField<Map<String, dynamic>>(
-              value: _selectedCategory,
-              decoration: InputDecoration(
-                labelText: "Catégorie",
-                filled: true,
-                fillColor: Colors.grey[50],
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-              ),
-              items: categories.map((cat) {
-                return DropdownMenuItem(
-                  value: cat,
-                  child: Text("${cat['emoji'] ?? '📁'}  ${cat['nom']}"),
-                );
-              }).toList(),
-              onChanged: (val) => setState(() => _selectedCategory = val),
-            ),
-            const SizedBox(height: 15),
-
-            _buildDatePicker(),
-            const SizedBox(height: 15),
-
-            TextField(
-              controller: _noteController,
-              decoration: InputDecoration(
-                labelText: "Note (optionnel)",
-                filled: true,
-                fillColor: Colors.grey[50],
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-              ),
-            ),
-            const SizedBox(height: 30),
-
-            ElevatedButton(
-              onPressed: _isSaving ? null : _saveTransaction,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2D6A4F),
-                minimumSize: const Size(double.infinity, 55),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              ),
-              child: _isSaving 
-                ? const CircularProgressIndicator(color: Colors.white) 
-                : const Text("Ajouter", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-  Widget _buildDatePicker() {
-    return InkWell(
-      onTap: () async {
-        final date = await showDatePicker(context: context, initialDate: selectedDate, firstDate: DateTime(2000), lastDate: DateTime(2100));
-        if (date != null) setState(() => selectedDate = date);
-      },
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      bottom: true, //safe area pour les bouton de navigation
       child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(15)),
-        child: Row(
-          children: [
-            const Icon(LucideIcons.calendar, size: 20, color: Color(0xFF2D6A4F)),
-            const SizedBox(width: 10),
-            Text(DateFormat('dd MMMM yyyy', 'fr_FR').format(selectedDate)),
-          ],
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          top: 20,
+          left: 20,
+          right: 20,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Barre de drag
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Sélecteur Type
+              Row(
+                children: [
+                  _buildTypeTab("Revenu", true, const Color(0xFF2D6A4F)),
+                  const SizedBox(width: 10),
+                  _buildTypeTab("Dépense", false, Colors.red),
+                ],
+              ),
+              const SizedBox(height: 25),
+
+              // Montant
+              TextField(
+                controller: _amountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(fontSize: 18),
+                decoration: InputDecoration(
+                  labelText: "Montant",
+                  prefixText: "FCFA ",
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+
+              // Catégorie
+              DropdownButtonFormField<Category>(
+                value: _selectedCategory,
+                decoration: InputDecoration(
+                  labelText: "Catégorie",
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                items: categories.map((cat) {
+                  return DropdownMenuItem(
+                    value: cat,
+                    child: Text("${cat.emoji ?? '📁'}  ${cat.name}"),
+                  );
+                }).toList(),
+                onChanged: (val) =>
+                    setState(() => _selectedCategory = val),
+              ),
+              const SizedBox(height: 15),
+
+              _buildDatePicker(),
+              const SizedBox(height: 15),
+
+              // Note
+              TextField(
+                controller: _noteController,
+                decoration: InputDecoration(
+                  labelText: "Note (optionnel)",
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              // Bouton enregistrer
+              ElevatedButton(
+                onPressed: _isSaving ? null : _saveTransaction,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2D6A4F),
+                  minimumSize: const Size(double.infinity, 55),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        "Enregistrer",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildTypeTab(String label, bool value, Color activeColor) {
-    bool isSelected = isIncome == value;
-    return Expanded( 
-      child: GestureDetector(
+    final isSelected = isIncome == value;
+    return Expanded(
+      child: InkWell(
         onTap: () {
-          setState(() => isIncome = value);
-          _setDefaultCategory();
+          if (isIncome != value) {
+            setState(() => isIncome = value);
+            _setDefaultCategory();
+          }
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 15),
           decoration: BoxDecoration(
             color: isSelected ? activeColor : Colors.grey[100],
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
-            child: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.black54, fontWeight: FontWeight.bold)),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black54,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
+  Widget _buildDatePicker() {
+    return InkWell(
+      onTap: () async {
+        final date = await showDatePicker(
+          context: context,
+          initialDate: selectedDate,
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now().add(const Duration(days: 365)),
+        );
+        if (date != null) setState(() => selectedDate = date);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Row(
+          children: [
+            const Icon(LucideIcons.calendar,
+                size: 20, color: Colors.grey),
+            const SizedBox(width: 10),
+            Text(DateFormat('dd MMMM yyyy', 'fr_FR')
+                .format(selectedDate)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _saveTransaction() async {
-    if (_amountController.text.isEmpty || _selectedCategory == null) return;
+    final amountText =
+        _amountController.text.replaceAll(',', '.').trim();
+    final amount = double.tryParse(amountText);
+
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Veuillez entrer un montant valide")),
+      );
+      return;
+    }
+
+    if (_selectedCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Sélectionnez une catégorie")),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
+
     try {
-      final user = _supabase.auth.currentUser;
-      final tableName = isIncome ? 'revenus' : 'depenses';
-      await _supabase.from(tableName).insert({
-        'user_id': user!.id,
-        'montant': double.parse(_amountController.text),
-        'date': selectedDate.toIso8601String().split('T')[0],
-        'description': _noteController.text.trim(),
-        'categorie_id': _selectedCategory!['id'],
-      });
-      if (mounted) {
+      final success =
+          await context.read<UserProvider>().addTransaction(
+                montant: amount,
+                type: isIncome ? 'revenu' : 'depense',
+                categorieId: _selectedCategory!.id,
+                date: selectedDate,
+                description: _noteController.text.trim(),
+              );
+
+      if (success && mounted) {
         widget.onTransactionAdded();
         Navigator.pop(context);
       }
-    } catch (e) {
-      debugPrint("Erreur: $e");
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
